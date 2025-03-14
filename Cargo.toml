@@ -5,4 +5,4 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.97"
-prev-iter = "0.2.0"
+regex = "1.11.1"

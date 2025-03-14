@@ -1,11 +1,4 @@
 #[derive(Debug)]
-pub enum ASTNodeType {
-    BLOCK,
-    DEFINITION,
-    CALL,
-}
-
-#[derive(Debug)]
 pub enum PropType {
     Literal(String),
     Var(String),
@@ -31,5 +24,5 @@ pub struct ASTNode {
     pub name: String,
     pub children: Vec<ASTBody>,
     pub props: Vec<ASTProp>,
-    pub node_type: Option<ASTNodeType>,
+    pub self_closing: bool,
 }

@@ -1,7 +1,7 @@
-use crate::{
-    ast::types::{ASTBody, ASTNode, ASTProp, PropType},
-    iter::StringIter,
-};
+pub mod types;
+
+use crate::iter::Iter;
+use types::{ASTBody, ASTNode, ASTProp, PropType};
 
 #[derive(Debug)]
 enum ParseState {
@@ -13,17 +13,16 @@ enum ParseState {
 }
 
 pub fn start_parse(contents: String) -> ASTNode {
-    let mut iter = StringIter::from(&contents);
+    let mut iter = Iter::from(contents.chars());
     parse(&mut iter, None, 0)
 }
 
-pub fn parse(iter: &mut StringIter, id: Option<usize>, mut current_id: usize) -> ASTNode {
+pub fn parse(iter: &mut Iter<char>, id: Option<usize>, mut current_id: usize) -> ASTNode {
     let mut parse_state = ParseState::None;
     let mut tag = ASTNode {
         id: current_id,
         parent_id: id,
-        node_type: None,
-
+        self_closing: false,
         name: String::new(),
         children: Vec::new(),
         props: Vec::new(),
@@ -32,7 +31,6 @@ pub fn parse(iter: &mut StringIter, id: Option<usize>, mut current_id: usize) ->
     let mut buffer = String::new();
     let mut closing_tag = String::new();
     while let Some(char) = iter.next() {
-        //println!("{}", char);
         match char {
             '<' => match parse_state {
                 ParseState::None => parse_state = ParseState::Tag,
@@ -69,11 +67,11 @@ pub fn parse(iter: &mut StringIter, id: Option<usize>, mut current_id: usize) ->
                     }
                     return tag;
                 }
-
                 _ => panic!("Unexpected `>` tag"),
             },
             '/' => {
                 if let Some('>') = iter.peek() {
+                    tag.self_closing = true;
                     iter.next();
                     return tag;
                 }
@@ -110,7 +108,7 @@ enum PropValueType {
     Var,
 }
 
-fn process_prop(iter: &mut StringIter, prop_id: usize) -> ASTProp {
+fn process_prop(iter: &mut Iter<char>, prop_id: usize) -> ASTProp {
     iter.step_back();
     let mut parse_state = PropParseState::Name;
     let mut prop = ASTProp {
@@ -163,9 +161,17 @@ fn process_prop(iter: &mut StringIter, prop_id: usize) -> ASTProp {
                 },
                 _ => panic!("Unexpected `}}` "),
             },
-            '>' | '/' => match parse_state {
+            '/' => match parse_state {
+                PropParseState::Value => {
+                    if let Some(next) = iter.next() {
+                        buffer.push(next);
+                    }
+                }
+                _ => break,
+            },
+            '>' => match parse_state {
                 PropParseState::Name => break,
-                _ => panic!("Unexpected closing"),
+                _ => panic!("Unexpected `>`"),
             },
             char if !char.is_whitespace() => {
                 if let Some(next) = iter.next() {

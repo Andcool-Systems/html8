@@ -1,27 +1,29 @@
+use std::cmp;
+
 #[derive(Clone, Debug)]
-pub struct StringIter {
-    vec: Vec<char>,
+pub struct Iter<T: Clone> {
+    vec: Vec<T>,
     pos: usize,
 }
 
-impl StringIter {
-    pub fn from(dest: &String) -> Self {
+impl<T: Clone> Iter<T> {
+    pub fn from<I: IntoIterator<Item = T>>(iter: I) -> Self {
         Self {
-            vec: dest.chars().collect::<Vec<char>>(),
+            vec: iter.into_iter().collect(),
             pos: 0,
         }
     }
 
-    pub fn next(&mut self) -> Option<char> {
+    pub fn next(&mut self) -> Option<T> {
         if self.pos >= self.vec.len() {
             return None;
         }
 
         self.pos += 1;
-        Some(self.vec[self.pos - 1])
+        Some(self.vec[self.pos - 1].clone())
     }
 
-    pub fn peek(&self) -> Option<char> {
+    pub fn peek(&self) -> Option<T> {
         if self.pos >= self.vec.len() {
             return None;
         }
@@ -30,6 +32,6 @@ impl StringIter {
     }
 
     pub fn step_back(&mut self) {
-        self.pos -= 1;
+        self.pos = cmp::max(0, self.pos - 1)
     }
 }
