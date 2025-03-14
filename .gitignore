@@ -1,0 +1,5 @@
+file.html8
+test.txt
+target/
+.vscode/
+Cargo.lock
