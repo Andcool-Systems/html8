@@ -1,17 +1,25 @@
-use crate::parser::types::{ASTNode, ASTProp};
-
+// Possible data types
 #[derive(Debug, Clone)]
-pub enum NodeType {
-    BLOCK(BlockType),
-    DEFINITION(DataTypes),
-    CALL(String),
-    ASSIGN(String),
+pub enum DataType {
+    Int,
+    Bool,
+    Void
 }
 
 #[derive(Debug, Clone)]
-pub enum DataTypes {
-    Int(Option<String>),
-    Bool(Option<String>),
+#[allow(dead_code)]
+pub enum NodeType {
+    BLOCK(BlockStruct),
+    DEFINITION(DefinitionType),
+    CALL(CallStruct),
+    ASSIGN(String),
+}
+
+// -------------- Block Type ---------------
+#[derive(Debug, Clone)]
+pub struct BlockStruct {
+    pub tag: BlockType,
+    pub children: Vec<Box<NodeType>>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -22,40 +30,47 @@ pub enum BlockType {
     Div,
 }
 
-impl NodeType {
-    pub fn from(tag: &ASTNode) -> Self {
-        match &tag.name {
-            // Definitions
-            s if s == "int" => Self::DEFINITION(DataTypes::Int(None)),
-            s if s == "bool" => Self::DEFINITION(DataTypes::Bool(None)),
+// ----------- Definition Type -------------
 
-            // Blocks
-            s if s == "html" => Self::BLOCK(BlockType::Html),
-            s if s == "head" => Self::BLOCK(BlockType::Head),
-            s if s == "main" => Self::BLOCK(BlockType::Main),
-            s if s == "div" => Self::BLOCK(BlockType::Div),
-            s if tag.self_closing => Self::CALL(s.to_string()),
-            s => Self::ASSIGN(s.to_string()),
-        }
-    }
+#[derive(Debug, Clone)]
+pub enum DefinitionType {
+    Function(FunctionDefinitionStruct),
+    Variable(VariableDefinitionStruct),
 }
 
-#[derive(Debug)]
-pub enum Child {
-    String(String),
-    Tag(Box<Node>),
+#[derive(Debug, Clone)]
+pub struct ArgStruct {
+    pub name: String,
+    pub data_type: DataType,
 }
 
-#[derive(Debug)]
-pub enum FunctionVariable {
-    Function,
-    Variable,
+#[derive(Debug, Clone)]
+pub struct VariableDefinitionStruct {
+    pub data_type: DataType,
+    pub name: String,
+    pub value: String,
+    pub is_const: bool,
 }
 
-#[derive(Debug)]
-pub struct Node {
-    pub node_type: NodeType,
-    pub children: Vec<Child>,
-    pub props: Vec<ASTProp>,
-    pub func: Option<FunctionVariable>,
+#[derive(Debug, Clone)]
+pub struct FunctionDefinitionStruct {
+    pub data_type: DataType,
+    pub name: String,
+    pub children: Vec<Box<NodeType>>,
+    pub args: Vec<ArgStruct>,
+}
+
+// ----------- Call Type ---------------
+
+#[derive(Debug, Clone)]
+pub struct CallArgStruct {
+    pub name: String,
+    pub value: String,
+    pub is_simple: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct CallStruct {
+    pub calling_name: String,
+    pub args: Vec<CallArgStruct>,
 }

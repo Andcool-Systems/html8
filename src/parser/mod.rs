@@ -14,14 +14,12 @@ enum ParseState {
 
 pub fn start_parse(contents: String) -> ASTNode {
     let mut iter = Iter::from(contents.chars());
-    parse(&mut iter, None, 0)
+    parse(&mut iter)
 }
 
-pub fn parse(iter: &mut Iter<char>, id: Option<usize>, mut current_id: usize) -> ASTNode {
+pub fn parse(iter: &mut Iter<char>) -> ASTNode {
     let mut parse_state = ParseState::None;
     let mut tag = ASTNode {
-        id: current_id,
-        parent_id: id,
         self_closing: false,
         name: String::new(),
         children: Vec::new(),
@@ -44,14 +42,8 @@ pub fn parse(iter: &mut Iter<char>, id: Option<usize>, mut current_id: usize) ->
                         iter.next(); // Consume '/'
                         parse_state = ParseState::ClosingTag;
                     } else {
-                        current_id += 1;
-
                         iter.step_back();
-                        tag.children.push(ASTBody::Tag(Box::new(parse(
-                            iter,
-                            Some(tag.id),
-                            current_id,
-                        ))));
+                        tag.children.push(ASTBody::Tag(Box::new(parse(iter))));
                     }
                 }
                 _ => panic!("Unexpected `<` tag"),
@@ -78,7 +70,7 @@ pub fn parse(iter: &mut Iter<char>, id: Option<usize>, mut current_id: usize) ->
             }
             char if !char.is_whitespace() => match parse_state {
                 ParseState::Tag => tag.name.push(char),
-                ParseState::Props => tag.props.push(process_prop(iter, tag.props.len())),
+                ParseState::Props => tag.props.push(process_prop(iter)),
                 ParseState::ClosingTag => closing_tag.push(char),
                 ParseState::Body => buffer.push(char),
                 _ => panic!("Unexpected literal"),
@@ -108,11 +100,10 @@ enum PropValueType {
     Var,
 }
 
-fn process_prop(iter: &mut Iter<char>, prop_id: usize) -> ASTProp {
+fn process_prop(iter: &mut Iter<char>) -> ASTProp {
     iter.step_back();
     let mut parse_state = PropParseState::Name;
     let mut prop = ASTProp {
-        id: prop_id,
         name: String::new(),
         value: None,
     };
