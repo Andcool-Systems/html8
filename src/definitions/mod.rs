@@ -1,6 +1,7 @@
-use crate::math::math::MathToken;
-
-use super::types::{DefinitionType, FunctionDefinitionStruct, NodeType};
+use crate::{
+    code_tree::types::{DefinitionType, FunctionDefinitionStruct, NodeType},
+    math::math::MathToken,
+};
 
 #[derive(Debug, Clone)]
 pub enum Defined {
@@ -59,16 +60,18 @@ pub fn check(tree: NodeType, defined: &mut Vec<Defined>) {
                     continue;
                 }
 
-                let mut defined_math = Vec::new();
-                recursive_math_def_check(arg.value.clone(), &mut defined_math);
-                defined_math.iter().for_each(|d| {
-                    if search(&scope, d).is_none() {
-                        panic!(
-                            "Variable `{}` in arguments for call `{}` not defined",
-                            d, call_struct.calling_name
-                        );
-                    }
-                });
+                if let Some(argv) = &arg.value {
+                    let mut defined_math = Vec::new();
+                    recursive_math_def_check(argv.clone(), &mut defined_math);
+                    defined_math.iter().for_each(|d| {
+                        if search(&scope, d).is_none() {
+                            panic!(
+                                "Variable `{}` in arguments for call `{}` not defined",
+                                d, call_struct.calling_name
+                            );
+                        }
+                    });
+                }
 
                 if let Some(Defined::Function(f)) = entry {
                     if !f.args.iter().any(|a| a.name == arg.name) {

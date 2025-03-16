@@ -1,14 +1,14 @@
 use crate::{
-    math::math::MathParser,
+    definitions::start_def_check,
+    math::math::{MathParser, MathToken},
     parser::types::{ASTBody, ASTNode, PropType},
 };
-use definitions::start_def_check;
 use types::{
     ArgStruct, BlockStruct, BlockType, CallArgStruct, CallStruct, DataType, DefinitionType,
     FunctionDefinitionStruct, NodeType, VariableDefinitionStruct,
 };
-mod definitions;
-mod types;
+
+pub mod types;
 use regex::Regex;
 
 fn is_valid_identifier(s: &str) -> bool {
@@ -22,6 +22,7 @@ pub fn start_generating_code_tree(tree: ASTNode) -> NodeType {
     tree
 }
 
+#[derive(Debug)]
 enum TempNodeType {
     Definition(DataType),
     Block(BlockType),
@@ -40,6 +41,7 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
         // Definitions
         s if s == "int" => TempNodeType::Definition(DataType::Int),
         s if s == "bool" => TempNodeType::Definition(DataType::Bool),
+        s if s == "str" => TempNodeType::Definition(DataType::Str),
         s if s == "void" => TempNodeType::Definition(DataType::Void),
 
         // Blocks
@@ -148,24 +150,24 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
         TempNodeType::Call => NodeType::CALL({
             let args = tree.props.iter().map(|prop| {
                 let mut is_simple = false;
-                let mut value = String::new();
+                let mut value = None;
                 if let Some(val) = &prop.value {
                     value = match val {
                         PropType::Literal(s) => {
                             is_simple = true;
-                            s.to_string()
+                            Some(MathToken::Literal(s.to_string()))
                         }
                         PropType::Var(s) => {
                             is_simple = false;
-                            s.to_string()
+                            let mut math = MathParser::new(s.chars());
+                            Some(math.parse_expr())
                         }
                     };
                 }
 
-                let mut math = MathParser::new(value.chars());
                 CallArgStruct {
                     name: prop.name.clone(),
-                    value: math.parse_expr(),
+                    value,
                     is_simple,
                 }
             });
