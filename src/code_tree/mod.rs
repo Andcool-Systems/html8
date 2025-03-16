@@ -1,4 +1,7 @@
-use crate::parser::types::{ASTBody, ASTNode, PropType};
+use crate::{
+    math::math::MathParser,
+    parser::types::{ASTBody, ASTNode, PropType},
+};
 use definitions::start_def_check;
 use types::{
     ArgStruct, BlockStruct, BlockType, CallArgStruct, CallStruct, DataType, DefinitionType,
@@ -131,10 +134,11 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
                     panic!("Function definition cannot take arguments")
                 }
 
+                let mut math = MathParser::new(value.to_string().chars());
                 NodeType::DEFINITION(DefinitionType::Variable(VariableDefinitionStruct {
                     data_type,
                     name: definition_name,
-                    value: value.to_string(),
+                    value: math.parse_expr(),
                     is_const: is_const.is_some(),
                 }))
             } else {
@@ -158,9 +162,10 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
                     };
                 }
 
+                let mut math = MathParser::new(value.chars());
                 CallArgStruct {
                     name: prop.name.clone(),
-                    value,
+                    value: math.parse_expr(),
                     is_simple,
                 }
             });
@@ -193,7 +198,8 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
                 NodeType::DEFINITION(ref mut definition_type) => match definition_type {
                     DefinitionType::Function(_) => panic!("Cannot use string tags inside function"),
                     DefinitionType::Variable(ref mut fds) => {
-                        fds.value = s.clone();
+                        let mut math = MathParser::new(s.chars());
+                        fds.value = math.parse_expr();
                     }
                 },
                 NodeType::CALL(_) => unreachable!("HOW IT'S POSSIBLE??"),

@@ -1,3 +1,5 @@
+use crate::math::math::MathToken;
+
 // Possible data types
 #[derive(Debug, Clone)]
 pub enum DataType {
@@ -48,7 +50,7 @@ pub struct ArgStruct {
 pub struct VariableDefinitionStruct {
     pub data_type: DataType,
     pub name: String,
-    pub value: String,
+    pub value: MathToken,
     pub is_const: bool,
 }
 
@@ -65,7 +67,7 @@ pub struct FunctionDefinitionStruct {
 #[derive(Debug, Clone)]
 pub struct CallArgStruct {
     pub name: String,
-    pub value: String,
+    pub value: MathToken,
     pub is_simple: bool,
 }
 

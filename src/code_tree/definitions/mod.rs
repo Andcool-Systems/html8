@@ -1,3 +1,5 @@
+use crate::math::math::MathToken;
+
 use super::types::{DefinitionType, FunctionDefinitionStruct, NodeType};
 
 #[derive(Debug, Clone)]
@@ -57,12 +59,16 @@ pub fn check(tree: NodeType, defined: &mut Vec<Defined>) {
                     continue;
                 }
 
-                if search(&scope, &arg.value).is_none() {
-                    panic!(
-                        "Variable `{}` in arguments for call `{}` not defined",
-                        arg.value, call_struct.calling_name
-                    );
-                }
+                let mut defined_math = Vec::new();
+                recursive_math_def_check(arg.value.clone(), &mut defined_math);
+                defined_math.iter().for_each(|d| {
+                    if search(&scope, d).is_none() {
+                        panic!(
+                            "Variable `{}` in arguments for call `{}` not defined",
+                            d, call_struct.calling_name
+                        );
+                    }
+                });
 
                 if let Some(Defined::Function(f)) = entry {
                     if !f.args.iter().any(|a| a.name == arg.name) {
@@ -78,4 +84,19 @@ pub fn check(tree: NodeType, defined: &mut Vec<Defined>) {
     }
 
     *defined = scope;
+}
+
+fn recursive_math_def_check(token: MathToken, def: &mut Vec<String>) {
+    match token {
+        MathToken::Variable(n) => def.push(n),
+        MathToken::Add(a, b)
+        | MathToken::Sub(a, b)
+        | MathToken::Mul(a, b)
+        | MathToken::Div(a, b)
+        | MathToken::Pow(a, b) => {
+            recursive_math_def_check(*a, def);
+            recursive_math_def_check(*b, def);
+        }
+        _ => {}
+    }
 }

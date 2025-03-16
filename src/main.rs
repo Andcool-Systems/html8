@@ -6,7 +6,9 @@ use parser::start_parse;
 
 mod code_tree;
 mod iter;
+mod math;
 mod parser;
+
 
 fn main() -> Result<()> {
     let contents = fs::read_to_string("./file.html8")?;
