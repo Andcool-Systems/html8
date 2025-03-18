@@ -1,47 +1,47 @@
-use crate::{
-    code_tree::types::{DefinitionType, FunctionDefinitionStruct, NodeType},
-    math::math::MathToken,
+use std::collections::HashMap;
+
+use crate::code_tree::types::{
+    DefinitionType, FunctionDefinitionStruct, NodeType, VariableDefinitionStruct,
 };
 
 #[derive(Debug, Clone)]
 pub enum Defined {
-    Variable(String),
+    Variable(VariableDefinitionStruct),
     Function(FunctionDefinitionStruct),
 }
 
 pub fn start_def_check(tree: NodeType) {
-    let mut defined: Vec<Defined> = Vec::new();
+    let mut defined: HashMap<String, Defined> = HashMap::new();
     check(tree, &mut defined);
 }
 
-fn search<'a>(defined: &'a Vec<Defined>, name: &str) -> Option<&'a Defined> {
-    defined.iter().find(|d| match d {
-        Defined::Variable(vn) => *vn == *name,
-        Defined::Function(fds) => fds.name == name,
-    })
-}
-
-pub fn check(tree: NodeType, defined: &mut Vec<Defined>) {
+fn check(tree: NodeType, defined: &mut HashMap<String, Defined>) {
     let mut scope = defined.clone();
 
     match tree {
         NodeType::BLOCK(block_struct) => {
-            for child in block_struct.children {
-                check(*child, &mut scope);
-            }
+            block_struct
+                .children
+                .iter()
+                .for_each(|c| check(*c.clone(), &mut scope));
         }
         NodeType::DEFINITION(definition_type) => match definition_type {
             DefinitionType::Function(fds) => {
-                let mut local_scope = scope.clone();
-                for child in &fds.children {
-                    check(*child.clone(), &mut local_scope);
-                }
-                scope.push(Defined::Function(fds));
+                fds.children
+                    .iter()
+                    .for_each(|c| check(*c.clone(), &mut scope.clone()));
+                scope.insert(fds.name.clone(), Defined::Function(fds));
             }
-            DefinitionType::Variable(vds) => scope.push(Defined::Variable(vds.name)),
+            DefinitionType::Variable(vds) => {
+                vds.value
+                    .check_def(&scope)
+                    .unwrap_or_else(|e| panic!("Variable `{}` not defined", e.var_name));
+                scope.insert(vds.name.clone(), Defined::Variable(vds));
+            }
         },
         NodeType::CALL(call_struct) => {
-            let entry = search(&scope, &call_struct.calling_name);
+            // Get calling variable by name
+            let entry = scope.get(&call_struct.calling_name);
 
             if entry.is_none() {
                 panic!(
@@ -50,27 +50,26 @@ pub fn check(tree: NodeType, defined: &mut Vec<Defined>) {
                 );
             }
 
-            if let Some(Defined::Variable(name)) = entry {
-                panic!("Cannot call variable as function: {}", name);
+            if let Some(Defined::Variable(vds)) = entry {
+                panic!("Cannot call variable as function: {}", vds.name);
+            }
+
+            if let Some(Defined::Function(f)) = entry {
+                for arg in f.args.clone() {
+                    if !call_struct.args.iter().any(|a| a.name == arg.name) {
+                        panic!(
+                            "Argument `{}` in function `{}` call is required",
+                            arg.name, f.name
+                        );
+                    }
+                }
             }
 
             // Check call args
             for arg in &call_struct.args {
-                if arg.is_simple {
-                    continue;
-                }
-
                 if let Some(argv) = &arg.value {
-                    let mut defined_math = Vec::new();
-                    recursive_math_def_check(argv.clone(), &mut defined_math);
-                    defined_math.iter().for_each(|d| {
-                        if search(&scope, d).is_none() {
-                            panic!(
-                                "Variable `{}` in arguments for call `{}` not defined",
-                                d, call_struct.calling_name
-                            );
-                        }
-                    });
+                    argv.check_def(&scope)
+                        .unwrap_or_else(|e| panic!("Variable `{}` not defined", e.var_name));
                 }
 
                 if let Some(Defined::Function(f)) = entry {
@@ -87,19 +86,4 @@ pub fn check(tree: NodeType, defined: &mut Vec<Defined>) {
     }
 
     *defined = scope;
-}
-
-fn recursive_math_def_check(token: MathToken, def: &mut Vec<String>) {
-    match token {
-        MathToken::Variable(n) => def.push(n),
-        MathToken::Add(a, b)
-        | MathToken::Sub(a, b)
-        | MathToken::Mul(a, b)
-        | MathToken::Div(a, b)
-        | MathToken::Pow(a, b) => {
-            recursive_math_def_check(*a, def);
-            recursive_math_def_check(*b, def);
-        }
-        _ => {}
-    }
 }

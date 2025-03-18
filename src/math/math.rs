@@ -1,4 +1,8 @@
-use crate::iter::Iter;
+use std::collections::HashMap;
+
+use crate::{code_tree::types::DataType, definitions::Defined, iter::Iter};
+
+use super::errors::DefinitionNotFound;
 
 #[derive(Debug, Clone)]
 pub enum MathToken {
@@ -144,5 +148,67 @@ impl MathParser {
         }
 
         panic!("Unclosed `\"` for literal `{}...`", buf);
+    }
+}
+
+impl MathToken {
+    pub fn get_type(&self, scope: &HashMap<String, Defined>) -> DataType {
+        match self {
+            MathToken::Number(_) => DataType::Int,
+            MathToken::Literal(_) => DataType::Str,
+            MathToken::Variable(var) => MathToken::get_var_type(var.to_string(), scope),
+            MathToken::Add(lhs, rhs)
+            | MathToken::Sub(lhs, rhs)
+            | MathToken::Mul(lhs, rhs)
+            | MathToken::Div(lhs, rhs)
+            | MathToken::Pow(lhs, rhs) => {
+                let lhs_type = lhs.get_type(scope);
+                let rhs_type = rhs.get_type(scope);
+                if lhs_type == rhs_type {
+                    lhs_type
+                } else {
+                    panic!(
+                        "Type mismatch for math operation: {:?} and {:?}",
+                        lhs_type, rhs_type
+                    );
+                }
+            }
+        }
+    }
+
+    fn get_var_type(var: String, scope: &HashMap<String, Defined>) -> DataType {
+        match scope.get(&var).unwrap() {
+            Defined::Variable(vds) => vds.data_type.clone(),
+            Defined::Function(fds) => fds.data_type.clone(),
+        }
+    }
+
+    /// Check definitions in math AST
+    pub fn check_def(&self, scope: &HashMap<String, Defined>) -> Result<(), DefinitionNotFound> {
+        let mut def = Vec::new();
+        MathToken::recursive_math_def_check(self.clone(), &mut def);
+
+        for d in def.iter() {
+            if scope.get(d).is_none() {
+                return Err(DefinitionNotFound::new(d));
+            }
+        }
+
+        Ok(())
+    }
+
+    fn recursive_math_def_check(token: MathToken, def: &mut Vec<String>) {
+        match token {
+            MathToken::Variable(n) => def.push(n),
+            MathToken::Add(a, b)
+            | MathToken::Sub(a, b)
+            | MathToken::Mul(a, b)
+            | MathToken::Div(a, b)
+            | MathToken::Pow(a, b) => {
+                MathToken::recursive_math_def_check(*a, def);
+                MathToken::recursive_math_def_check(*b, def);
+            }
+            _ => {}
+        }
     }
 }

@@ -130,7 +130,7 @@ fn process_prop(iter: &mut Iter<char>) -> ASTProp {
                         parse_state = PropParseState::Name;
                         iter.next();
                     }
-                    _ => panic!("Unexpected `\"` "),
+                    _ => buffer.push(iter.next().unwrap()),
                 },
                 _ => panic!("Unexpected `\"`"),
             },

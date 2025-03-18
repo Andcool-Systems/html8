@@ -2,6 +2,7 @@ use crate::{
     definitions::start_def_check,
     math::math::{MathParser, MathToken},
     parser::types::{ASTBody, ASTNode, PropType},
+    types::typechecker::start_types_check,
 };
 use types::{
     ArgStruct, BlockStruct, BlockType, CallArgStruct, CallStruct, DataType, DefinitionType,
@@ -19,6 +20,7 @@ fn is_valid_identifier(s: &str) -> bool {
 pub fn start_generating_code_tree(tree: ASTNode) -> NodeType {
     let tree = preprocess_code_tree(tree);
     start_def_check(tree.clone());
+    start_types_check(tree.clone());
     tree
 }
 
@@ -32,6 +34,8 @@ enum TempNodeType {
 fn get_data_type(str: String) -> Option<DataType> {
     match str {
         s if s == "int" => Some(DataType::Int),
+        s if s == "str" => Some(DataType::Str),
+        s if s == "bool" => Some(DataType::Bool),
         _ => None,
     }
 }

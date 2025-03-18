@@ -1,7 +1,7 @@
 use crate::math::math::MathToken;
 
 // Possible data types
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum DataType {
     Int,
     Bool,
@@ -69,6 +69,8 @@ pub struct FunctionDefinitionStruct {
 pub struct CallArgStruct {
     pub name: String,
     pub value: Option<MathToken>,
+
+    /// Args, like `<print endl />`
     pub is_simple: bool,
 }
 

@@ -9,6 +9,7 @@ mod definitions;
 mod iter;
 mod math;
 mod parser;
+mod types;
 
 fn main() -> Result<()> {
     let contents = fs::read_to_string("./file.html8")?;
