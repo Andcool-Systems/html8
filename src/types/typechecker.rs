@@ -15,28 +15,28 @@ fn check(tree: NodeType, defined: &mut HashMap<String, Defined>) {
 
     match tree {
         NodeType::BLOCK(block_struct) => {
-            for child in block_struct.children {
-                check(*child, &mut scope);
-            }
+            block_struct
+                .children
+                .iter()
+                .for_each(|c| check(*c.clone(), &mut scope));
         }
-        NodeType::DEFINITION(definition_type) => {
-            match definition_type {
-                DefinitionType::Function(fds) => {
-                    let mut local_scope = scope.clone();
-                    for child in &fds.children {
-                        check(*child.clone(), &mut local_scope);
-                    }
-                    scope.insert(fds.name.clone(), Defined::Function(fds));
-                }
-                DefinitionType::Variable(vds) => {
-                    let value_type = vds.value.get_type(&scope);
-                    if vds.data_type != value_type {
-                        panic!("Value type for variable `{}` is incorrect! Expected `{:?}`, got `{:?}`", vds.name, vds.data_type, value_type);
-                    }
-                    scope.insert(vds.name.clone(), Defined::Variable(vds));
-                }
+        NodeType::DEFINITION(definition_type) => match definition_type {
+            DefinitionType::Function(fds) => {
+                fds.children
+                    .iter()
+                    .for_each(|c| check(*c.clone(), &mut scope.clone()));
             }
-        }
+            DefinitionType::Variable(vds) => {
+                let value_type = vds.value.get_type(&scope);
+                if vds.data_type != value_type {
+                    panic!(
+                        "Value type for variable `{}` is incorrect! Expected `{:?}`, got `{:?}`",
+                        vds.name, vds.data_type, value_type
+                    );
+                }
+                scope.insert(vds.name.clone(), Defined::Variable(vds));
+            }
+        },
         NodeType::CALL(call_struct) => {
             if let Some(Defined::Function(fds)) = scope.get(&call_struct.calling_name) {
                 for arg in &call_struct.args {
