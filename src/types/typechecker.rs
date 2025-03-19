@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    code_tree::types::{DefinitionType, NodeType},
+    code_tree::types::{DataType, DefinitionType, NodeType},
     definitions::Defined,
 };
 
@@ -41,18 +41,21 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
         NodeType::CALL(ref mut call_struct) => {
             if let Some(Defined::Function(fds)) = scope.get(&call_struct.calling_name) {
                 for arg in &mut call_struct.args {
-                    if let Some(v) = arg.value.as_mut() {
-                        v.optimize(&scope);
-                    }
-                    if let (Some(afa), Some(ref mut argv)) = (
+                    if let (Some(ags), Some(argv)) = (
                         fds.args.iter().find(|a| a.name == arg.name),
-                        arg.value.clone(),
+                        arg.value.as_mut(),
                     ) {
                         let argv_type = argv.get_type(&scope);
-                        if afa.data_type != argv_type {
+                        argv.optimize(&scope);
+
+                        if let DataType::Any = ags.data_type {
+                            continue;
+                        }
+
+                        if ags.data_type != argv_type {
                             panic!(
                                 "Argument `{}` has wrong type! Expected: `{:?}`, got `{:?}`",
-                                afa.name, afa.data_type, argv_type
+                                ags.name, ags.data_type, argv_type
                             );
                         }
                     }

@@ -1,6 +1,10 @@
 use crate::{
     definitions::start_def_check,
-    math::math::{MathParser, MathToken},
+    libs::std::STD,
+    math::{
+        self,
+        math::{MathParser, MathToken},
+    },
     parser::types::{ASTBody, ASTNode, PropType},
     types::typechecker::start_types_check,
 };
@@ -19,6 +23,25 @@ fn is_valid_identifier(s: &str) -> bool {
 
 pub fn start_generating_code_tree(tree: ASTNode) -> NodeType {
     let mut tree = preprocess_code_tree(tree);
+
+    match tree {
+        NodeType::BLOCK(ref mut block_struct) if block_struct.tag == BlockType::Html => {
+            for ref mut child in block_struct.children.iter_mut() {
+                match child.as_mut() {
+                    NodeType::BLOCK(ref mut block_struct)
+                        if block_struct.tag == BlockType::Main =>
+                    {
+                        block_struct.children.splice(0..0, STD::use_lib());
+                    }
+                    NodeType::BLOCK(ref mut block_struct)
+                        if block_struct.tag == BlockType::Head => {} // Will be used later
+                    _ => panic!("Unexpected tag inside `html`!"),
+                }
+            }
+        }
+        _ => panic!("Unexpected root tag!"),
+    }
+
     start_def_check(&mut tree);
     start_types_check(&mut tree);
     tree

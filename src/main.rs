@@ -7,6 +7,7 @@ use parser::start_parse;
 mod code_tree;
 mod definitions;
 mod iter;
+mod libs;
 mod math;
 mod parser;
 mod types;

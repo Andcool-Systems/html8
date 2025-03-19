@@ -7,6 +7,8 @@ pub enum DataType {
     Bool,
     Str,
     Void,
+
+    Any, // Internal type, cannot be accessed from code
 }
 
 #[derive(Debug, Clone)]
@@ -25,7 +27,7 @@ pub struct BlockStruct {
     pub children: Vec<Box<NodeType>>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum BlockType {
     Html,
     Head,
@@ -47,6 +49,12 @@ pub struct ArgStruct {
     pub data_type: DataType,
 }
 
+impl ArgStruct {
+    pub fn new(name: String, data_type: DataType) -> ArgStruct {
+        Self { name, data_type }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct VariableDefinitionStruct {
     pub data_type: DataType,
@@ -61,6 +69,21 @@ pub struct FunctionDefinitionStruct {
     pub name: String,
     pub children: Vec<Box<NodeType>>,
     pub args: Vec<ArgStruct>,
+}
+
+impl FunctionDefinitionStruct {
+    pub fn new(
+        name: String,
+        data_type: DataType,
+        args: Vec<ArgStruct>,
+    ) -> FunctionDefinitionStruct {
+        Self {
+            data_type,
+            name,
+            children: Vec::new(),
+            args,
+        }
+    }
 }
 
 // ----------- Call Type ---------------
