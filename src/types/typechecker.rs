@@ -5,28 +5,28 @@ use crate::{
     definitions::Defined,
 };
 
-pub fn start_types_check(tree: NodeType) {
+pub fn start_types_check(tree: &mut NodeType) {
     let mut defined: HashMap<String, Defined> = HashMap::new();
     check(tree, &mut defined);
 }
 
-fn check(tree: NodeType, defined: &mut HashMap<String, Defined>) {
+fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
     let mut scope = defined.clone();
 
     match tree {
-        NodeType::BLOCK(block_struct) => {
-            block_struct
-                .children
-                .iter()
-                .for_each(|c| check(*c.clone(), &mut scope));
-        }
-        NodeType::DEFINITION(definition_type) => match definition_type {
-            DefinitionType::Function(fds) => {
-                fds.children
-                    .iter()
-                    .for_each(|c| check(*c.clone(), &mut scope.clone()));
+        NodeType::BLOCK(ref mut block_struct) => {
+            for child in &mut block_struct.children {
+                check(child, defined);
             }
-            DefinitionType::Variable(vds) => {
+        }
+        NodeType::DEFINITION(ref mut definition_type) => match definition_type {
+            DefinitionType::Function(fds) => {
+                for child in &mut fds.children {
+                    check(child, defined);
+                }
+                scope.insert(fds.name.clone(), Defined::Function(fds.clone()));
+            }
+            DefinitionType::Variable(ref mut vds) => {
                 let value_type = vds.value.get_type(&scope);
                 if vds.data_type != value_type {
                     panic!(
@@ -34,13 +34,17 @@ fn check(tree: NodeType, defined: &mut HashMap<String, Defined>) {
                         vds.name, vds.data_type, value_type
                     );
                 }
-                scope.insert(vds.name.clone(), Defined::Variable(vds));
+                vds.value.optimize(&scope);
+                scope.insert(vds.name.clone(), Defined::Variable(vds.clone()));
             }
         },
-        NodeType::CALL(call_struct) => {
+        NodeType::CALL(ref mut call_struct) => {
             if let Some(Defined::Function(fds)) = scope.get(&call_struct.calling_name) {
-                for arg in &call_struct.args {
-                    if let (Some(afa), Some(argv)) = (
+                for arg in &mut call_struct.args {
+                    if let Some(v) = arg.value.as_mut() {
+                        v.optimize(&scope);
+                    }
+                    if let (Some(afa), Some(ref mut argv)) = (
                         fds.args.iter().find(|a| a.name == arg.name),
                         arg.value.clone(),
                     ) {

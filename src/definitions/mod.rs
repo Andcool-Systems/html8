@@ -10,33 +10,40 @@ pub enum Defined {
     Function(FunctionDefinitionStruct),
 }
 
-pub fn start_def_check(tree: NodeType) {
+pub fn start_def_check(tree: &mut NodeType) {
     let mut defined: HashMap<String, Defined> = HashMap::new();
     check(tree, &mut defined);
 }
 
-fn check(tree: NodeType, defined: &mut HashMap<String, Defined>) {
+fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
     let mut scope = defined.clone();
 
     match tree {
         NodeType::BLOCK(block_struct) => {
-            block_struct
-                .children
-                .iter()
-                .for_each(|c| check(*c.clone(), &mut scope));
+            for child in &mut block_struct.children {
+                check(child, defined);
+            }
         }
         NodeType::DEFINITION(definition_type) => match definition_type {
             DefinitionType::Function(fds) => {
-                fds.children
-                    .iter()
-                    .for_each(|c| check(*c.clone(), &mut scope.clone()));
-                scope.insert(fds.name.clone(), Defined::Function(fds));
+                for child in &mut fds.children {
+                    check(child, defined);
+                }
+
+                if scope.get(&fds.name).is_some() {
+                    panic!("Cannot redefine function `{}`", fds.name);
+                }
+                scope.insert(fds.name.clone(), Defined::Function(fds.clone()));
             }
             DefinitionType::Variable(vds) => {
                 vds.value
                     .check_def(&scope)
                     .unwrap_or_else(|e| panic!("Variable `{}` not defined", e.var_name));
-                scope.insert(vds.name.clone(), Defined::Variable(vds));
+
+                if scope.get(&vds.name).is_some() {
+                    panic!("Cannot redefine variable `{}`", vds.name);
+                }
+                scope.insert(vds.name.clone(), Defined::Variable(vds.clone()));
             }
         },
         NodeType::CALL(call_struct) => {

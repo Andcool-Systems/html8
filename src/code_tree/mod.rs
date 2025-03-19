@@ -18,9 +18,9 @@ fn is_valid_identifier(s: &str) -> bool {
 }
 
 pub fn start_generating_code_tree(tree: ASTNode) -> NodeType {
-    let tree = preprocess_code_tree(tree);
-    start_def_check(tree.clone());
-    start_types_check(tree.clone());
+    let mut tree = preprocess_code_tree(tree);
+    start_def_check(&mut tree);
+    start_types_check(&mut tree);
     tree
 }
 
@@ -153,26 +153,17 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
         }
         TempNodeType::Call => NodeType::CALL({
             let args = tree.props.iter().map(|prop| {
-                let mut is_simple = false;
                 let mut value = None;
                 if let Some(val) = &prop.value {
                     value = match val {
-                        PropType::Literal(s) => {
-                            is_simple = true;
-                            Some(MathToken::Literal(s.to_string()))
-                        }
-                        PropType::Var(s) => {
-                            is_simple = false;
-                            let mut math = MathParser::new(s.chars());
-                            Some(math.parse_expr())
-                        }
+                        PropType::Literal(s) => Some(MathToken::Literal(s.to_string())),
+                        PropType::Var(s) => Some(MathParser::new(s.chars()).parse_expr()),
                     };
                 }
 
                 CallArgStruct {
                     name: prop.name.clone(),
                     value,
-                    is_simple,
                 }
             });
             CallStruct {

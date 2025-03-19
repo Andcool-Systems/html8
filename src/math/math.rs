@@ -6,7 +6,7 @@ use super::errors::DefinitionNotFound;
 
 #[derive(Debug, Clone)]
 pub enum MathToken {
-    Number(i64),
+    Number(i32),
     Variable(String),
     Literal(String),
     Add(Box<MathToken>, Box<MathToken>),
@@ -209,6 +209,64 @@ impl MathToken {
                 MathToken::recursive_math_def_check(*b, def);
             }
             _ => {}
+        }
+    }
+
+    pub fn optimize(&mut self, scope: &HashMap<String, Defined>) {
+        *self = self.clone().optimize_rec(scope);
+    }
+
+    fn optimize_rec(self, scope: &HashMap<String, Defined>) -> Self {
+        match self {
+            MathToken::Number(_) | MathToken::Literal(_) => self,
+            MathToken::Variable(n) => {
+                if let Some(Defined::Variable(variable)) = scope.get(&n) {
+                    if variable.is_const {
+                        return variable.value.clone();
+                    }
+                }
+                MathToken::Variable(n)
+            }
+            MathToken::Add(a, b) => {
+                let a = a.optimize_rec(scope);
+                let b = b.optimize_rec(scope);
+                if let (MathToken::Number(left), MathToken::Number(right)) = (&a, &b) {
+                    return MathToken::Number(left + right);
+                }
+                MathToken::Add(Box::new(a), Box::new(b))
+            }
+            MathToken::Sub(a, b) => {
+                let a = a.optimize_rec(scope);
+                let b = b.optimize_rec(scope);
+                if let (MathToken::Number(left), MathToken::Number(right)) = (&a, &b) {
+                    return MathToken::Number(left - right);
+                }
+                MathToken::Sub(Box::new(a), Box::new(b))
+            }
+            MathToken::Mul(a, b) => {
+                let a = a.optimize_rec(scope);
+                let b = b.optimize_rec(scope);
+                if let (MathToken::Number(left), MathToken::Number(right)) = (&a, &b) {
+                    return MathToken::Number(left * right);
+                }
+                MathToken::Mul(Box::new(a), Box::new(b))
+            }
+            MathToken::Div(a, b) => {
+                let a = a.optimize_rec(scope);
+                let b = b.optimize_rec(scope);
+                if let (MathToken::Number(left), MathToken::Number(right)) = (&a, &b) {
+                    return MathToken::Number(left / right);
+                }
+                MathToken::Div(Box::new(a), Box::new(b))
+            }
+            MathToken::Pow(a, b) => {
+                let a = a.optimize_rec(scope);
+                let b = b.optimize_rec(scope);
+                if let (MathToken::Number(left), MathToken::Number(right)) = (&a, &b) {
+                    return MathToken::Number(left.pow(*right as u32));
+                }
+                MathToken::Pow(Box::new(a), Box::new(b))
+            }
         }
     }
 }

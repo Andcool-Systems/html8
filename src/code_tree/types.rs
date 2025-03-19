@@ -69,9 +69,6 @@ pub struct FunctionDefinitionStruct {
 pub struct CallArgStruct {
     pub name: String,
     pub value: Option<MathToken>,
-
-    /// Args, like `<print endl />`
-    pub is_simple: bool,
 }
 
 #[derive(Debug, Clone)]
