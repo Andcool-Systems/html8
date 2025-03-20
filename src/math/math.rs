@@ -5,15 +5,15 @@ use crate::{code_tree::types::DataType, definitions::Defined, iter::Iter};
 use super::errors::DefinitionNotFound;
 
 #[derive(Debug, Clone)]
-pub enum MathToken {
+pub enum ExprToken {
     Number(i32),
     Variable(String),
     Literal(String),
-    Add(Box<MathToken>, Box<MathToken>),
-    Sub(Box<MathToken>, Box<MathToken>),
-    Mul(Box<MathToken>, Box<MathToken>),
-    Div(Box<MathToken>, Box<MathToken>),
-    Pow(Box<MathToken>, Box<MathToken>),
+    Add(Box<ExprToken>, Box<ExprToken>),
+    Sub(Box<ExprToken>, Box<ExprToken>),
+    Mul(Box<ExprToken>, Box<ExprToken>),
+    Div(Box<ExprToken>, Box<ExprToken>),
+    Pow(Box<ExprToken>, Box<ExprToken>),
 }
 
 pub struct MathParser {
@@ -27,7 +27,7 @@ impl MathParser {
         }
     }
 
-    fn parse_primary(&mut self) -> MathToken {
+    fn parse_primary(&mut self) -> ExprToken {
         match self.iter.peek() {
             Some('.') => todo!("Float not yet implemented"),
             Some('(') | Some(')') => todo!("Parentheses not implemented yet"),
@@ -43,7 +43,7 @@ impl MathParser {
         }
     }
 
-    pub fn parse_expr(&mut self) -> MathToken {
+    pub fn parse_expr(&mut self) -> ExprToken {
         let mut node = self.parse_term();
 
         while let Some(char) = self.iter.peek() {
@@ -52,8 +52,8 @@ impl MathParser {
                     self.iter.next();
                     let r = self.parse_term();
                     node = match char {
-                        '+' => MathToken::Add(Box::new(node), Box::new(r)),
-                        '-' => MathToken::Sub(Box::new(node), Box::new(r)),
+                        '+' => ExprToken::Add(Box::new(node), Box::new(r)),
+                        '-' => ExprToken::Sub(Box::new(node), Box::new(r)),
                         _ => unreachable!(),
                     };
                 }
@@ -68,7 +68,7 @@ impl MathParser {
         node
     }
 
-    fn parse_term(&mut self) -> MathToken {
+    fn parse_term(&mut self) -> ExprToken {
         let mut node = self.parse_exponent();
 
         while let Some(char) = self.iter.peek() {
@@ -77,8 +77,8 @@ impl MathParser {
                     self.iter.next();
                     let r = self.parse_exponent();
                     node = match char {
-                        '/' => MathToken::Div(Box::new(node), Box::new(r)),
-                        '*' => MathToken::Mul(Box::new(node), Box::new(r)),
+                        '/' => ExprToken::Div(Box::new(node), Box::new(r)),
+                        '*' => ExprToken::Mul(Box::new(node), Box::new(r)),
                         _ => unreachable!(),
                     };
                 }
@@ -93,7 +93,7 @@ impl MathParser {
         node
     }
 
-    fn parse_exponent(&mut self) -> MathToken {
+    fn parse_exponent(&mut self) -> ExprToken {
         let mut node = self.parse_primary();
 
         while let Some(char) = self.iter.peek() {
@@ -101,7 +101,7 @@ impl MathParser {
                 '^' => {
                     self.iter.next();
                     let r = self.parse_primary();
-                    node = MathToken::Pow(Box::new(node), Box::new(r));
+                    node = ExprToken::Pow(Box::new(node), Box::new(r));
                 }
                 ch if ch.is_whitespace() => {
                     self.iter.next();
@@ -114,31 +114,31 @@ impl MathParser {
         node
     }
 
-    fn process_number(&mut self) -> MathToken {
+    fn process_number(&mut self) -> ExprToken {
         let mut buf = String::new();
         while matches!(self.iter.peek(), Some(ch) if ch.is_numeric()) {
             buf.push(self.iter.next().unwrap());
         }
 
-        MathToken::Number(buf.parse().expect("Invalid number"))
+        ExprToken::Number(buf.parse().expect("Invalid number"))
     }
 
-    fn process_var(&mut self) -> MathToken {
+    fn process_var(&mut self) -> ExprToken {
         let mut buf = String::new();
         while matches!(self.iter.peek(), Some(ch) if ch.is_alphanumeric()) {
             buf.push(self.iter.next().unwrap());
         }
 
-        MathToken::Variable(buf)
+        ExprToken::Variable(buf)
     }
 
-    fn process_literal(&mut self) -> MathToken {
+    fn process_literal(&mut self) -> ExprToken {
         self.iter.next();
         let mut buf = String::new();
         while let Some(ch) = self.iter.peek() {
             match ch {
                 '"' => {
-                    return MathToken::Literal(buf);
+                    return ExprToken::Literal(buf);
                 }
                 ch => {
                     self.iter.next();
@@ -151,17 +151,17 @@ impl MathParser {
     }
 }
 
-impl MathToken {
+impl ExprToken {
     pub fn get_type(&self, scope: &HashMap<String, Defined>) -> DataType {
         match self {
-            MathToken::Number(_) => DataType::Int,
-            MathToken::Literal(_) => DataType::Str,
-            MathToken::Variable(var) => MathToken::get_var_type(var.to_string(), scope),
-            MathToken::Add(lhs, rhs)
-            | MathToken::Sub(lhs, rhs)
-            | MathToken::Mul(lhs, rhs)
-            | MathToken::Div(lhs, rhs)
-            | MathToken::Pow(lhs, rhs) => {
+            ExprToken::Number(_) => DataType::Int,
+            ExprToken::Literal(_) => DataType::Str,
+            ExprToken::Variable(var) => ExprToken::get_var_type(var.to_string(), scope),
+            ExprToken::Add(lhs, rhs)
+            | ExprToken::Sub(lhs, rhs)
+            | ExprToken::Mul(lhs, rhs)
+            | ExprToken::Div(lhs, rhs)
+            | ExprToken::Pow(lhs, rhs) => {
                 let lhs_type = lhs.get_type(scope);
                 let rhs_type = rhs.get_type(scope);
                 if lhs_type == rhs_type {
@@ -186,7 +186,7 @@ impl MathToken {
     /// Check definitions in math AST
     pub fn check_def(&self, scope: &HashMap<String, Defined>) -> Result<(), DefinitionNotFound> {
         let mut def = Vec::new();
-        MathToken::recursive_math_def_check(self.clone(), &mut def);
+        ExprToken::recursive_math_def_check(self.clone(), &mut def);
 
         for d in def.iter() {
             if scope.get(d).is_none() {
@@ -197,16 +197,16 @@ impl MathToken {
         Ok(())
     }
 
-    fn recursive_math_def_check(token: MathToken, def: &mut Vec<String>) {
+    fn recursive_math_def_check(token: ExprToken, def: &mut Vec<String>) {
         match token {
-            MathToken::Variable(n) => def.push(n),
-            MathToken::Add(a, b)
-            | MathToken::Sub(a, b)
-            | MathToken::Mul(a, b)
-            | MathToken::Div(a, b)
-            | MathToken::Pow(a, b) => {
-                MathToken::recursive_math_def_check(*a, def);
-                MathToken::recursive_math_def_check(*b, def);
+            ExprToken::Variable(n) => def.push(n),
+            ExprToken::Add(a, b)
+            | ExprToken::Sub(a, b)
+            | ExprToken::Mul(a, b)
+            | ExprToken::Div(a, b)
+            | ExprToken::Pow(a, b) => {
+                ExprToken::recursive_math_def_check(*a, def);
+                ExprToken::recursive_math_def_check(*b, def);
             }
             _ => {}
         }
@@ -218,54 +218,54 @@ impl MathToken {
 
     fn optimize_rec(self, scope: &HashMap<String, Defined>) -> Self {
         match self {
-            MathToken::Number(_) | MathToken::Literal(_) => self,
-            MathToken::Variable(n) => {
+            ExprToken::Number(_) | ExprToken::Literal(_) => self,
+            ExprToken::Variable(n) => {
                 if let Some(Defined::Variable(variable)) = scope.get(&n) {
                     if variable.is_const {
                         return variable.value.clone();
                     }
                 }
-                MathToken::Variable(n)
+                ExprToken::Variable(n)
             }
-            MathToken::Add(a, b) => {
+            ExprToken::Add(a, b) => {
                 let a = a.optimize_rec(scope);
                 let b = b.optimize_rec(scope);
-                if let (MathToken::Number(left), MathToken::Number(right)) = (&a, &b) {
-                    return MathToken::Number(left + right);
+                if let (ExprToken::Number(left), ExprToken::Number(right)) = (&a, &b) {
+                    return ExprToken::Number(left + right);
                 }
-                MathToken::Add(Box::new(a), Box::new(b))
+                ExprToken::Add(Box::new(a), Box::new(b))
             }
-            MathToken::Sub(a, b) => {
+            ExprToken::Sub(a, b) => {
                 let a = a.optimize_rec(scope);
                 let b = b.optimize_rec(scope);
-                if let (MathToken::Number(left), MathToken::Number(right)) = (&a, &b) {
-                    return MathToken::Number(left - right);
+                if let (ExprToken::Number(left), ExprToken::Number(right)) = (&a, &b) {
+                    return ExprToken::Number(left - right);
                 }
-                MathToken::Sub(Box::new(a), Box::new(b))
+                ExprToken::Sub(Box::new(a), Box::new(b))
             }
-            MathToken::Mul(a, b) => {
+            ExprToken::Mul(a, b) => {
                 let a = a.optimize_rec(scope);
                 let b = b.optimize_rec(scope);
-                if let (MathToken::Number(left), MathToken::Number(right)) = (&a, &b) {
-                    return MathToken::Number(left * right);
+                if let (ExprToken::Number(left), ExprToken::Number(right)) = (&a, &b) {
+                    return ExprToken::Number(left * right);
                 }
-                MathToken::Mul(Box::new(a), Box::new(b))
+                ExprToken::Mul(Box::new(a), Box::new(b))
             }
-            MathToken::Div(a, b) => {
+            ExprToken::Div(a, b) => {
                 let a = a.optimize_rec(scope);
                 let b = b.optimize_rec(scope);
-                if let (MathToken::Number(left), MathToken::Number(right)) = (&a, &b) {
-                    return MathToken::Number(left / right);
+                if let (ExprToken::Number(left), ExprToken::Number(right)) = (&a, &b) {
+                    return ExprToken::Number(left / right);
                 }
-                MathToken::Div(Box::new(a), Box::new(b))
+                ExprToken::Div(Box::new(a), Box::new(b))
             }
-            MathToken::Pow(a, b) => {
+            ExprToken::Pow(a, b) => {
                 let a = a.optimize_rec(scope);
                 let b = b.optimize_rec(scope);
-                if let (MathToken::Number(left), MathToken::Number(right)) = (&a, &b) {
-                    return MathToken::Number(left.pow(*right as u32));
+                if let (ExprToken::Number(left), ExprToken::Number(right)) = (&a, &b) {
+                    return ExprToken::Number(left.pow(*right as u32));
                 }
-                MathToken::Pow(Box::new(a), Box::new(b))
+                ExprToken::Pow(Box::new(a), Box::new(b))
             }
         }
     }

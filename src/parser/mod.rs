@@ -132,10 +132,22 @@ fn process_prop(iter: &mut Iter<char>) -> ASTProp {
                     }
                     _ => buffer.push(iter.next().unwrap()),
                 },
+                PropParseState::Name if prop.name.is_empty() => {
+                    prop.name = "arg".to_string();
+                    value_type = PropValueType::Literal;
+                    parse_state = PropParseState::Value;
+                    iter.next();
+                }
                 _ => panic!("Unexpected `\"`"),
             },
             '{' => match parse_state {
                 PropParseState::Eq => {
+                    value_type = PropValueType::Var;
+                    parse_state = PropParseState::Value;
+                    iter.next();
+                }
+                PropParseState::Name if prop.name.is_empty() => {
+                    prop.name = "arg".to_string();
                     value_type = PropValueType::Var;
                     parse_state = PropParseState::Value;
                     iter.next();

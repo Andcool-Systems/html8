@@ -1,10 +1,7 @@
 use crate::{
     definitions::start_def_check,
     libs::std::STD,
-    math::{
-        self,
-        math::{MathParser, MathToken},
-    },
+    math::math::{ExprToken, MathParser},
     parser::types::{ASTBody, ASTNode, PropType},
     types::typechecker::start_types_check,
 };
@@ -179,7 +176,7 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
                 let mut value = None;
                 if let Some(val) = &prop.value {
                     value = match val {
-                        PropType::Literal(s) => Some(MathToken::Literal(s.to_string())),
+                        PropType::Literal(s) => Some(ExprToken::Literal(s.to_string())),
                         PropType::Var(s) => Some(MathParser::new(s.chars()).parse_expr()),
                     };
                 }

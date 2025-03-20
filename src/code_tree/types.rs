@@ -1,4 +1,4 @@
-use crate::math::math::MathToken;
+use crate::math::math::ExprToken;
 
 // Possible data types
 #[derive(Debug, Clone, PartialEq)]
@@ -59,7 +59,7 @@ impl ArgStruct {
 pub struct VariableDefinitionStruct {
     pub data_type: DataType,
     pub name: String,
-    pub value: MathToken,
+    pub value: ExprToken,
     pub is_const: bool,
 }
 
@@ -91,7 +91,7 @@ impl FunctionDefinitionStruct {
 #[derive(Debug, Clone)]
 pub struct CallArgStruct {
     pub name: String,
-    pub value: Option<MathToken>,
+    pub value: Option<ExprToken>,
 }
 
 #[derive(Debug, Clone)]

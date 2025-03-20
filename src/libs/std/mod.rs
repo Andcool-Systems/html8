@@ -2,8 +2,10 @@
     HTML 8 Standard Library
 
     Definitions provider for functions:
-    <println stdout="any" />
-    <return val="any" />
+    <println {} />
+    <return {} />
+    <inc {} />
+    <dec {} />
 */
 
 use crate::code_tree::types::{
@@ -17,6 +19,8 @@ impl STD {
         vec![
             Box::new(Self::build_println()),
             Box::new(Self::build_return()),
+            Box::new(Self::build_inc()),
+            Box::new(Self::build_dec()),
         ]
     }
 
@@ -24,7 +28,7 @@ impl STD {
         NodeType::DEFINITION(DefinitionType::Function(FunctionDefinitionStruct::new(
             "println".to_string(),
             DataType::Void,
-            vec![ArgStruct::new("stdout".to_string(), DataType::Any)],
+            vec![ArgStruct::new("arg".to_string(), DataType::Any)],
         )))
     }
 
@@ -32,7 +36,23 @@ impl STD {
         NodeType::DEFINITION(DefinitionType::Function(FunctionDefinitionStruct::new(
             "return".to_string(),
             DataType::Void,
-            vec![ArgStruct::new("val".to_string(), DataType::Any)],
+            vec![ArgStruct::new("arg".to_string(), DataType::Any)],
+        )))
+    }
+
+    fn build_inc() -> NodeType {
+        NodeType::DEFINITION(DefinitionType::Function(FunctionDefinitionStruct::new(
+            "inc".to_string(),
+            DataType::Void,
+            vec![ArgStruct::new("arg".to_string(), DataType::Any)],
+        )))
+    }
+
+    fn build_dec() -> NodeType {
+        NodeType::DEFINITION(DefinitionType::Function(FunctionDefinitionStruct::new(
+            "dec".to_string(),
+            DataType::Void,
+            vec![ArgStruct::new("arg".to_string(), DataType::Any)],
         )))
     }
 }
