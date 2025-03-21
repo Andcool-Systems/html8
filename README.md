@@ -59,7 +59,7 @@ HTML8 — это высокоуровневый компилируемый яз�
 ```xml
 <int name="my_func" arg1="int">
     <function-body>
-    <return val={my_var} />
+    <return {my_var} />
 </int>
 ```
 
@@ -76,8 +76,8 @@ HTML8 — это высокоуровневый компилируемый яз�
 
 <!-- А это уже функция, так как в ее теле появился вызов функции println -->
 <int name="hello">
-    <println stdout={my_var} />
-    <return val={my_var} />
+    <println {my_var} />
+    <return {my_var} />
 </int>
 ```
 
@@ -92,14 +92,14 @@ HTML8 — это высокоуровневый компилируемый яз�
         <int name="b">2</int>
 
         <int name="my_func" arg="int">
-            <return val={arg + b} />
+            <return {arg + b} />
         </int>
 
         <int name="result">
             <my_func arg={a} />
         </int>
 
-        <println stdout={result} />
+        <println {result} />
     </main>
 </html>
 ```
