@@ -136,6 +136,7 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
                     name: definition_name,
                     children: Vec::new(),
                     args: args.collect(),
+                    must_be_compiled: true,
                 }))
             } else if tree.children.len() == 1 {
                 let value = match &tree.children[0] {

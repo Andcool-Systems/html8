@@ -69,19 +69,22 @@ pub struct FunctionDefinitionStruct {
     pub name: String,
     pub children: Vec<Box<NodeType>>,
     pub args: Vec<ArgStruct>,
+    pub must_be_compiled: bool,
 }
 
 impl FunctionDefinitionStruct {
-    pub fn new(
+    pub fn new_internal(
         name: String,
         data_type: DataType,
         args: Vec<ArgStruct>,
+        must_be_compiled: bool,
     ) -> FunctionDefinitionStruct {
         Self {
             data_type,
             name,
             children: Vec::new(),
             args,
+            must_be_compiled,
         }
     }
 }
