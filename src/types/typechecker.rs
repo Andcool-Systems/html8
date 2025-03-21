@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use crate::{
-    code_tree::types::{DataType, DefinitionType, NodeType},
-    definitions::Defined,
+    code_tree::types::{DataType, DefinitionType, NodeType, VariableDefinitionStruct},
+    definitions::Defined, math::math::ExprToken,
 };
 
 pub fn start_types_check(tree: &mut NodeType) {
@@ -21,6 +21,17 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
         }
         NodeType::DEFINITION(ref mut definition_type) => match definition_type {
             DefinitionType::Function(fds) => {
+                for arg in fds.args.clone() {
+                    scope.insert(
+                        arg.name.clone(),
+                        Defined::Variable(VariableDefinitionStruct {
+                            data_type: arg.data_type,
+                            name: arg.name.clone(),
+                            value: ExprToken::Variable(arg.name.clone()),
+                            is_const: true,
+                        }),
+                    );
+                }
                 for child in &mut fds.children {
                     check(child, defined);
                 }

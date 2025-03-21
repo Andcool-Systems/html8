@@ -1,9 +1,10 @@
 <html>
     <main>
-        <void name="print_hello">
-            <println "Hello from HTML8!" />
+        <void name="print_hello" arg="str">
+            <print "hello, " />
+            <println {arg} />
         </void>
-        <print_hello />
+        <print_hello arg="HTML8" />
 
         <int name="var">2</int>
         <println {2 + var * 2} />

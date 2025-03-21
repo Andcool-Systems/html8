@@ -20,7 +20,7 @@ impl CLang {
         match data_type {
             DataType::Int => String::from("int"),
             DataType::Bool => String::from("bool"),
-            DataType::Str => todo!(),
+            DataType::Str => String::from("char"),
             DataType::Void => String::from("void"),
             _ => String::new(),
         }
@@ -50,16 +50,25 @@ impl CLang {
             NodeType::CALL(call_struct) if call_struct.calling_name.eq("println") => {
                 STD::compile_println(call_struct)
             }
+            NodeType::CALL(call_struct) if call_struct.calling_name.eq("print") => {
+                STD::compile_print(call_struct)
+            }
             NodeType::CALL(call_struct) => self.compile_call(call_struct),
             NodeType::ASSIGN(_) => todo!(),
         }
     }
 
     fn compile_var(&mut self, v: VariableDefinitionStruct) -> String {
+        let arr = if let DataType::Str = v.data_type {
+            String::from("[]")
+        } else {
+            String::new()
+        };
         format!(
-            "{} {} = {};",
+            "{} {}{} = {};",
             Self::convert_types(v.data_type),
             v.name,
+            arr,
             Self::process_expr_token(v.value)
         )
     }
@@ -73,9 +82,15 @@ impl CLang {
             .args
             .iter()
             .map(|arg| {
+                let arr = if let DataType::Str = arg.data_type {
+                    String::from("*")
+                } else {
+                    String::new()
+                };
                 format!(
-                    "{} {}",
+                    "{}{} {}",
                     Self::convert_types(arg.data_type.clone()),
+                    arr,
                     arg.name
                 )
             })

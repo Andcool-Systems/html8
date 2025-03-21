@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 
-use crate::code_tree::types::{
-    DefinitionType, FunctionDefinitionStruct, NodeType, VariableDefinitionStruct,
+use crate::{
+    code_tree::types::{
+        DefinitionType, FunctionDefinitionStruct, NodeType, VariableDefinitionStruct,
+    },
+    math::math::ExprToken,
 };
 
 #[derive(Debug, Clone)]
@@ -16,7 +19,7 @@ pub fn start_def_check(tree: &mut NodeType) {
 }
 
 fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
-    let mut scope = defined.clone();
+    let scope = &mut defined.clone();
 
     match tree {
         NodeType::BLOCK(block_struct) => {
@@ -26,9 +29,22 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
         }
         NodeType::DEFINITION(definition_type) => match definition_type {
             DefinitionType::Function(fds) => {
-                for child in &mut fds.children {
-                    check(child, defined);
+                for arg in fds.args.clone() {
+                    scope.insert(
+                        arg.name.clone(),
+                        Defined::Variable(VariableDefinitionStruct {
+                            data_type: arg.data_type,
+                            name: arg.name.clone(),
+                            value: ExprToken::Variable(String::new()),
+                            is_const: true,
+                        }),
+                    );
                 }
+                for child in &mut fds.children {
+                    check(child, scope);
+                }
+
+                //*scope = fn_scope;
 
                 if scope.get(&fds.name).is_some() {
                     panic!("Cannot redefine function `{}`", fds.name);
@@ -92,5 +108,5 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
         NodeType::ASSIGN(_) => todo!(),
     }
 
-    *defined = scope;
+    *defined = scope.clone();
 }

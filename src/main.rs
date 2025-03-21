@@ -31,6 +31,8 @@ fn main() -> Result<()> {
         fs::create_dir(dir_path)?;
     }
 
+    //println!("{}", code);
+
     let mut file = fs::File::create(&file_path)?;
     writeln!(file, "{}", code)?;
 
