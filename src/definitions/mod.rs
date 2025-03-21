@@ -35,7 +35,7 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
                         Defined::Variable(VariableDefinitionStruct {
                             data_type: arg.data_type,
                             name: arg.name.clone(),
-                            value: ExprToken::Variable(String::new()),
+                            value: ExprToken::Variable(arg.name.clone()),
                             is_const: true,
                         }),
                     );

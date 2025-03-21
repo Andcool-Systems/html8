@@ -95,7 +95,7 @@ impl CLang {
                 )
             })
             .collect::<Vec<String>>()
-            .join("\n");
+            .join(", ");
 
         let mut children: Vec<String> = Vec::new();
         for child in f.children {
@@ -103,7 +103,7 @@ impl CLang {
         }
 
         format!(
-            "{} {} ({}) {{ {} }}",
+            "{} {} ({}){{ {} }}",
             Self::convert_types(f.data_type),
             f.name,
             args,
@@ -117,7 +117,7 @@ impl CLang {
             .iter()
             .map(|a| Self::process_expr_token(a.value.clone().unwrap()))
             .collect::<Vec<String>>()
-            .join("\n");
+            .join(", ");
         format!("{}({});", call.calling_name, args)
     }
 

@@ -177,7 +177,10 @@ impl ExprToken {
     }
 
     fn get_var_type(var: String, scope: &HashMap<String, Defined>) -> DataType {
-        match scope.get(&var).unwrap() {
+        match scope
+            .get(&var)
+            .expect(&format!("Variable `{}` not defined", var))
+        {
             Defined::Variable(vds) => vds.data_type.clone(),
             Defined::Function(fds) => fds.data_type.clone(),
         }

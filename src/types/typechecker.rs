@@ -33,7 +33,7 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
                     );
                 }
                 for child in &mut fds.children {
-                    check(child, defined);
+                    check(child, &mut scope);
                 }
                 scope.insert(fds.name.clone(), Defined::Function(fds.clone()));
             }

@@ -1,12 +1,16 @@
 <html>
     <main>
         <void name="print_hello" arg="str">
-            <print "hello, " />
+            <print "Hello, " />
             <println {arg} />
         </void>
         <print_hello arg="HTML8" />
 
-        <int name="var">2</int>
-        <println {2 + var * 2} />
+        <void name="sum" a="int" b="int">
+            <println {a + b} />
+        </void>
+        <sum a={2} b={2} />
     </main>
 </html>
+
+
