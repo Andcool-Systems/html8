@@ -17,7 +17,7 @@ mod parser;
 mod types;
 
 fn main() -> Result<()> {
-    let contents = fs::read_to_string("./file.html8")?;
+    let contents = fs::read_to_string("./example.html8")?;
     let tree = start_parse(contents);
     let code_tree = start_generating_code_tree(tree);
     let mut comp = CLang::new(code_tree);

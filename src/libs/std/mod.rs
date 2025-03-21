@@ -75,12 +75,12 @@ impl STD {
     pub fn compile_println(call: CallStruct) -> String {
         if let Some(arg) = call.args.iter().find(|a| a.name.eq("arg")) {
             return match &arg.value {
-                Some(ExprToken::Literal(l)) => format!("printf(\"{}\");", l),
+                Some(ExprToken::Literal(l)) => format!("printf(\"{}\\n\");", l),
                 Some(_) => format!(
-                    "printf(\"%d\", {});",
+                    "printf(\"%d\\n\", {});",
                     CLang::process_expr_token(arg.value.clone().unwrap())
                 ),
-                None => format!("printf(\"%d\", {});", true),
+                None => format!("printf(\"%d\\n\", {});", true),
             };
         }
         String::new()

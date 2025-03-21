@@ -84,7 +84,7 @@
 <html>
     <head>
     </head>
-    <main i={123}>
+    <main>
         <int name="a">1</int>
         <int name="b">2</int>
 
