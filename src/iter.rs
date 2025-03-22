@@ -15,20 +15,18 @@ impl<T: Clone> Iter<T> {
     }
 
     pub fn next(&mut self) -> Option<T> {
-        if self.pos >= self.vec.len() {
-            return None;
-        }
-
-        self.pos += 1;
-        Some(self.vec[self.pos - 1].clone())
+        (self.pos >= self.vec.len())
+            .then_some(None)
+            .unwrap_or_else(|| {
+                self.pos += 1;
+                Some(self.vec[self.pos - 1].clone())
+            })
     }
 
     pub fn peek(&self) -> Option<T> {
-        if self.pos >= self.vec.len() {
-            return None;
-        }
-
-        Some(self.vec[self.pos].clone())
+        (self.pos >= self.vec.len())
+            .then(|| None)
+            .unwrap_or_else(|| Some(self.vec[self.pos].clone()))
     }
 
     pub fn step_back(&mut self) {

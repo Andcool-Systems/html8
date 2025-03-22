@@ -10,16 +10,18 @@
 */
 
 use crate::{
+    code_tree::types::CallArgStruct,
     code_tree::types::{
         ArgStruct, CallStruct, DataType, DefinitionType, FunctionDefinitionStruct, NodeType,
     },
-    compiler::compiler::CLang,
-    math::math::ExprToken,
+    compiler::CLang,
+    math::ExprToken,
 };
 
-pub struct STD {}
+pub struct Std;
 
-impl STD {
+impl Std {
+    #[allow(clippy::vec_box)]
     pub fn use_lib() -> Vec<Box<NodeType>> {
         vec![
             Box::new(Self::build_println()),
@@ -86,8 +88,10 @@ impl STD {
     }
 
     pub fn compile_println(call: CallStruct) -> String {
-        if let Some(arg) = call.args.iter().find(|a| a.name.eq("arg")) {
-            return match &arg.value {
+        call.args
+            .iter()
+            .find(|a: &&CallArgStruct| a.name.eq("arg"))
+            .map(|arg: &CallArgStruct| match &arg.value {
                 Some(ExprToken::Literal(l)) => format!("printf(\"{}\\n\");", l),
                 Some(ExprToken::Variable(l)) => format!("printf(\"%s\\n\", {});", l),
                 Some(_) => format!(
@@ -95,13 +99,12 @@ impl STD {
                     CLang::process_expr_token(arg.value.clone().unwrap())
                 ),
                 None => format!("printf(\"%d\\n\", {});", true),
-            };
-        }
-        String::new()
+            })
+            .unwrap_or_else(String::new)
     }
 
     pub fn compile_print(call: CallStruct) -> String {
-        if let Some(arg) = call.args.iter().find(|a| a.name.eq("arg")) {
+        if let Some(arg) = call.args.iter().find(|a: &&CallArgStruct| a.name.eq("arg")) {
             return match &arg.value {
                 Some(ExprToken::Literal(l)) => format!("printf(\"{}\");", l),
                 Some(ExprToken::Variable(l)) => format!("printf(\"%s\", {});", l),

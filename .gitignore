@@ -3,4 +3,5 @@ test.txt
 target/
 .vscode/
 Cargo.lock
-output
+output/
+.idea/
