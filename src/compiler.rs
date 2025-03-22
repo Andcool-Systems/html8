@@ -10,6 +10,7 @@ use crate::{
 
 const C_KEYWORDS: &[&str] = &[
     "return", "int", "char", "void", "if", "else", "while", "for", "do", "break", "continue",
+    "println", "print",
 ];
 
 pub struct CLang {
@@ -23,7 +24,7 @@ impl CompilerCodegen for CLang {
     fn compile(&mut self) -> String {
         let (functions, statements): (String, String) = self._compile(self.tree.clone());
         format!(
-            "#include <stdio.h>\n#include <math.h>\n\n{}\nint main(void){{\n{}\nreturn 0;\n}}",
+            "#include <stdio.h>\n#include <math.h>\n\n{}\nint main(void){{\n{}return 0;\n}}",
             functions, statements
         )
     }
@@ -50,6 +51,12 @@ impl CLang {
                     .children
                     .into_iter()
                     .for_each(|child: Box<NodeType>| {
+                        if matches!(
+                            *child, NodeType::DEFINITION(DefinitionType::Function(ref fds))
+                            if !fds.must_be_compiled
+                        ) {
+                            return;
+                        }
                         let (func, stmt): (String, String) = self._compile(*child);
 
                         (!func.is_empty()).then(|| {
@@ -125,7 +132,7 @@ impl CLang {
         });
 
         format!(
-            "{} {}({}) {{ {} }}",
+            "{} {}({}) {{\n{}\n}}",
             Self::convert_types(f.data_type),
             fn_name,
             args.join(", "),
