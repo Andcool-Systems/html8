@@ -44,16 +44,7 @@ fn main() -> Result<()> {
         "-std=gnu99",
         "-Wimplicit-int",
     ];
-    let compiler: &str = "clang"; // or gcc
-
-    /* println!(
-        "{} {}",
-        compiler,
-        args.iter()
-            .map(|arg: &&str| arg.to_string())
-            .collect::<String>()
-    ); */
-
+    let compiler: &str = "gcc";
     let compile_out: Output = Command::new(compiler).args(&args).output()?;
 
     (!compile_out.status.success()).then(|| {

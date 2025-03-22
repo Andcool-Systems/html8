@@ -25,6 +25,8 @@
         </int>
         <println {temp} />
 
+        <inc {temp} />
+        <println {temp} />
     </main>
 </html>
 

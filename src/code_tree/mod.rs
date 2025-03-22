@@ -74,6 +74,7 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
         s if s == "head" => TempNodeType::Block(BlockType::Head),
         s if s == "main" => TempNodeType::Block(BlockType::Main),
         s if s == "div" => TempNodeType::Block(BlockType::Div),
+        s if s == "for" => TempNodeType::Block(BlockType::For),
 
         // Assign/Call
         _ if tree.self_closing => TempNodeType::Call,

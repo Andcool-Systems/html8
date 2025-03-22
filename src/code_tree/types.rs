@@ -34,6 +34,7 @@ pub enum BlockType {
     Head,
     Main,
     Div,
+    For,
 }
 
 // ----------- Definition Type -------------

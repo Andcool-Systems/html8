@@ -1,4 +1,4 @@
-use crate::code_tree::types::{ArgStruct, AssignEnum, AssignStruct};
+use crate::code_tree::types::{ArgStruct, AssignEnum, AssignStruct, BlockType};
 use crate::{
     code_tree::types::{
         CallStruct, DataType, DefinitionType, FunctionDefinitionStruct, NodeType,
@@ -22,10 +22,10 @@ impl CompilerCodegen for CLang {
         Self { tree }
     }
     fn compile(&mut self) -> String {
-        let (functions, statements): (String, String) = self._compile(self.tree.clone());
+        let statements: String = self._compile(self.tree.clone());
         format!(
-            "#include <stdio.h>\n#include <math.h>\n\n{}\nint main(void){{\n{}return 0;\n}}",
-            functions, statements
+            "#include <stdio.h>\n#include <math.h>\n\nint main(void){{\n{}return 0;\n}}",
+            statements
         )
     }
 }
@@ -41,11 +41,18 @@ impl CLang {
         }
     }
 
-    fn _compile(&mut self, node: NodeType) -> (String, String) {
+    fn _compile(&mut self, node: NodeType) -> String {
         match node {
             NodeType::BLOCK(block_struct) => {
-                let (mut functions, mut statements): (String, String) =
-                    (String::new(), String::new());
+                let mut statements = String::new();
+
+                let brace_needed = match block_struct.tag {
+                    BlockType::Div | BlockType::For => {
+                        statements.push_str("{\n");
+                        true
+                    }
+                    _ => false,
+                };
 
                 block_struct
                     .children
@@ -57,36 +64,39 @@ impl CLang {
                         ) {
                             return;
                         }
-                        let (func, stmt): (String, String) = self._compile(*child);
-
-                        (!func.is_empty()).then(|| {
-                            functions.push_str(&func);
-                            functions.push('\n');
-                        });
-
+                        let stmt: String = self._compile(*child);
                         (!stmt.is_empty()).then(|| {
                             statements.push_str(&stmt);
                             statements.push('\n');
                         });
                     });
 
-                (functions, statements)
+                if brace_needed {
+                    statements.push('}');
+                }
+                statements
             }
             NodeType::DEFINITION(definition_type) => match definition_type {
-                DefinitionType::Function(fds) => (self.compile_fn(fds), String::new()),
-                DefinitionType::Variable(vds) => (String::new(), self.compile_var(vds)),
+                DefinitionType::Function(fds) => self.compile_fn(fds),
+                DefinitionType::Variable(vds) => self.compile_var(vds),
             },
             NodeType::CALL(call_struct) if call_struct.calling_name.eq("println") => {
-                (String::new(), Std::compile_println(call_struct))
+                Std::compile_println(call_struct)
             }
             NodeType::CALL(call_struct) if call_struct.calling_name.eq("print") => {
-                (String::new(), Std::compile_print(call_struct))
+                Std::compile_print(call_struct)
             }
             NodeType::CALL(call_struct) if call_struct.calling_name.eq("return") => {
-                (String::new(), Std::compile_return(call_struct))
+                Std::compile_return(call_struct)
             }
-            NodeType::CALL(call_struct) => (String::new(), self.compile_call(call_struct)),
-            NodeType::ASSIGN(assign_struct) => (String::new(), self.compile_assign(assign_struct)),
+            NodeType::CALL(call_struct) if call_struct.calling_name.eq("inc") => {
+                Std::compile_inc(call_struct)
+            }
+            NodeType::CALL(call_struct) if call_struct.calling_name.eq("dec") => {
+                Std::compile_dec(call_struct)
+            }
+            NodeType::CALL(call_struct) => self.compile_call(call_struct),
+            NodeType::ASSIGN(assign_struct) => self.compile_assign(assign_struct),
         }
     }
 
@@ -139,8 +149,8 @@ impl CLang {
 
         let mut children: Vec<String> = Vec::new();
         f.children.into_iter().for_each(|child: Box<NodeType>| {
-            let (_, stmt): (String, String) = self._compile(*child);
-            (!stmt.is_empty()).then(|| children.push(stmt));
+            let stmt_string = self._compile(*child);
+            (!stmt_string.is_empty()).then(|| children.push(stmt_string));
         });
 
         format!(

@@ -146,4 +146,24 @@ impl Std {
         }
         String::new()
     }
+
+    pub fn compile_inc(call: CallStruct) -> String {
+        if let Some(arg) = call.args.iter().find(|a: &&CallArgStruct| a.name.eq("arg")) {
+            return match &arg.value {
+                Some(ExprToken::Variable(l)) => format!("{}++;", l.name),
+                _ => panic!("Cannot increment non-variable type"),
+            };
+        }
+        String::new()
+    }
+
+    pub fn compile_dec(call: CallStruct) -> String {
+        if let Some(arg) = call.args.iter().find(|a: &&CallArgStruct| a.name.eq("arg")) {
+            return match &arg.value {
+                Some(ExprToken::Variable(l)) => format!("{}--;", l.name),
+                _ => panic!("Cannot increment non-variable type"),
+            };
+        }
+        String::new()
+    }
 }

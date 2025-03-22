@@ -125,7 +125,7 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
                 Some(Defined::Function(_)) => {
                     panic!("Cannot assign value to `{}` function", call_arg_struct.name)
                 }
-                None => panic!("Variable {} for assign not defined!", call_arg_struct.name),
+                None => panic!("Variable `{}` for assign not defined!", call_arg_struct.name),
                 _ => {}
             };
 
