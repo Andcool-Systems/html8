@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
-use crate::code_tree::types::{ArgStruct, CallArgStruct};
+use crate::code_tree::types::{ArgStruct, AssignEnum, CallArgStruct};
 use crate::math::errors::DefinitionNotFound;
+use crate::math::VariableType;
 use crate::{
     code_tree::types::{
         DefinitionType, FunctionDefinitionStruct, NodeType, VariableDefinitionStruct,
@@ -21,61 +22,80 @@ pub fn start_def_check(tree: &mut NodeType) {
 }
 
 fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
-    let scope: &mut HashMap<String, Defined> = &mut defined.clone();
-
     match tree {
         NodeType::BLOCK(block_struct) => {
+            let scope = defined.clone();
             block_struct
                 .children
                 .iter_mut()
                 .for_each(|child: &mut Box<NodeType>| {
                     check(child, defined);
                 });
+            *defined = scope.clone();
         }
         NodeType::DEFINITION(definition_type) => match definition_type {
             DefinitionType::Function(fds) => {
                 fds.args.clone().into_iter().for_each(|arg: ArgStruct| {
                     let var = Defined::Variable(VariableDefinitionStruct {
-                        data_type: arg.data_type,
+                        data_type: arg.data_type.clone(),
                         name: arg.name.clone(),
-                        value: ExprToken::Variable(arg.name.clone()),
+                        value: AssignEnum::Expr(ExprToken::Variable(VariableType::new(
+                            arg.name.clone(),
+                            arg.data_type,
+                            false,
+                        ))),
                         is_const: true,
                     });
 
-                    scope.insert(arg.name.clone(), var);
+                    defined.insert(arg.name.clone(), var);
                 });
 
+                let scope = defined.clone();
                 fds.children
                     .iter_mut()
                     .for_each(|child: &mut Box<NodeType>| {
-                        check(child, scope);
+                        check(child, defined);
                     });
 
-                //*scope = fn_scope;
+                *defined = scope.clone();
 
-                scope.get(&fds.name).is_some().then(|| {
+                defined.get(&fds.name).is_some().then(|| {
                     panic!("Cannot redefine function `{}`", fds.name);
                 });
 
-                scope.insert(fds.name.clone(), Defined::Function(fds.clone()));
+                defined.insert(fds.name.clone(), Defined::Function(fds.clone()));
             }
             DefinitionType::Variable(vds) => {
-                vds.value
-                    .check_def(scope)
-                    .unwrap_or_else(|e: DefinitionNotFound| {
-                        panic!("Variable `{}` not defined", e.var_name)
-                    });
+                match &vds.value {
+                    AssignEnum::Expr(expr_token) => {
+                        expr_token
+                            .check_def(defined)
+                            .unwrap_or_else(|e: DefinitionNotFound| {
+                                panic!("Variable `{}` not defined", e.var_name)
+                            });
+                    }
+                    AssignEnum::Call(node_type) => match *node_type.clone() {
+                        NodeType::CALL(call_struct) => {
+                            defined.get(&call_struct.calling_name).expect(&format!(
+                                "Function `{}` not defined",
+                                call_struct.calling_name
+                            ));
+                        }
+                        _ => panic!("Unexpected token inside {} definition", vds.name),
+                    },
+                    AssignEnum::None => unreachable!(),
+                }
 
-                scope.get(&vds.name).is_some().then(|| {
+                defined.get(&vds.name).is_some().then(|| {
                     panic!("Cannot redefine variable `{}`", vds.name);
                 });
 
-                scope.insert(vds.name.clone(), Defined::Variable(vds.clone()));
+                defined.insert(vds.name.clone(), Defined::Variable(vds.clone()));
             }
         },
         NodeType::CALL(call_struct) => {
             // Get calling variable by name
-            let entry = scope.get(&call_struct.calling_name);
+            let entry = defined.get(&call_struct.calling_name);
 
             entry.is_none().then(|| {
                 panic!(
@@ -106,7 +126,7 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
             // Check call args
             call_struct.args.iter().for_each(|arg: &CallArgStruct| {
                 if let Some(argv) = &arg.value {
-                    argv.check_def(scope)
+                    argv.check_def(defined)
                         .unwrap_or_else(|e: DefinitionNotFound| {
                             panic!("Variable `{}` not defined", e.var_name)
                         });
@@ -122,8 +142,29 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
                 }
             });
         }
-        NodeType::ASSIGN(_) => todo!(),
-    }
+        NodeType::ASSIGN(ref mut call_arg_struct) => {
+            match defined.get(&call_arg_struct.name) {
+                Some(Defined::Function(_)) => {
+                    panic!("Cannot assign value to `{}` function", call_arg_struct.name)
+                }
+                None => panic!("Variable {} for assign not defined!", call_arg_struct.name),
+                _ => {}
+            };
 
-    *defined = scope.clone();
+            match call_arg_struct.body.clone() {
+                AssignEnum::Expr(expr_token) => {
+                    expr_token
+                        .check_def(defined)
+                        .unwrap_or_else(|e: DefinitionNotFound| {
+                            panic!("Variable `{}` not defined", e.var_name)
+                        })
+                }
+                AssignEnum::Call(mut body) => match *body.clone() {
+                    NodeType::CALL(_) => check(&mut body, defined),
+                    _ => panic!("Unexpected token inside {} assign", call_arg_struct.name),
+                },
+                AssignEnum::None => unreachable!(),
+            }
+        }
+    }
 }

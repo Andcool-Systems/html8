@@ -17,7 +17,7 @@ pub enum NodeType {
     BLOCK(BlockStruct),
     DEFINITION(DefinitionType),
     CALL(CallStruct),
-    ASSIGN(String),
+    ASSIGN(AssignStruct),
 }
 
 // -------------- Block Type ---------------
@@ -60,7 +60,7 @@ impl ArgStruct {
 pub struct VariableDefinitionStruct {
     pub data_type: DataType,
     pub name: String,
-    pub value: ExprToken,
+    pub value: AssignEnum,
     pub is_const: bool,
 }
 
@@ -104,4 +104,28 @@ pub struct CallArgStruct {
 pub struct CallStruct {
     pub calling_name: String,
     pub args: Vec<CallArgStruct>,
+}
+
+// ----------- Assign Type ---------------
+
+#[derive(Debug, Clone)]
+pub enum AssignEnum {
+    Expr(ExprToken),
+    Call(Box<NodeType>),
+    None,
+}
+
+#[derive(Debug, Clone)]
+pub struct AssignStruct {
+    pub name: String,
+    pub body: AssignEnum,
+}
+
+impl AssignStruct {
+    pub fn new(name: String) -> Self {
+        AssignStruct {
+            name,
+            body: AssignEnum::None,
+        }
+    }
 }

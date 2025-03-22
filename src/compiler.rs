@@ -1,4 +1,4 @@
-use crate::code_tree::types::ArgStruct;
+use crate::code_tree::types::{ArgStruct, AssignEnum, AssignStruct};
 use crate::{
     code_tree::types::{
         CallStruct, DataType, DefinitionType, FunctionDefinitionStruct, NodeType,
@@ -82,8 +82,11 @@ impl CLang {
             NodeType::CALL(call_struct) if call_struct.calling_name.eq("print") => {
                 (String::new(), Std::compile_print(call_struct))
             }
+            NodeType::CALL(call_struct) if call_struct.calling_name.eq("return") => {
+                (String::new(), Std::compile_return(call_struct))
+            }
             NodeType::CALL(call_struct) => (String::new(), self.compile_call(call_struct)),
-            NodeType::ASSIGN(_) => todo!("UNIMPLEMENTED"),
+            NodeType::ASSIGN(assign_struct) => (String::new(), self.compile_assign(assign_struct)),
         }
     }
 
@@ -92,12 +95,21 @@ impl CLang {
             .then(|| String::from("*"))
             .unwrap_or_else(String::new);
 
+        let value = match v.value {
+            AssignEnum::Expr(expr_token) => Self::process_expr_token(expr_token),
+            AssignEnum::Call(node_type) => match *node_type {
+                NodeType::CALL(call_struct) => self.compile_call(call_struct),
+                _ => unreachable!(),
+            },
+            AssignEnum::None => unreachable!(),
+        };
+
         format!(
             "{} {}{} = {};",
             Self::convert_types(v.data_type),
-            v.name,
             arr,
-            Self::process_expr_token(v.value)
+            v.name,
+            value
         )
     }
 
@@ -155,10 +167,33 @@ impl CLang {
         format!("{}({});", calling_name, args.join(", "))
     }
 
+    fn compile_assign(&mut self, assign_struct: AssignStruct) -> String {
+        match assign_struct.body {
+            AssignEnum::Expr(expr_token) => {
+                format!(
+                    "{} = {};",
+                    assign_struct.name,
+                    Self::process_expr_token(expr_token)
+                )
+            }
+            AssignEnum::Call(node_type) => match *node_type {
+                NodeType::CALL(call_struct) => {
+                    format!(
+                        "{} = {};",
+                        assign_struct.name,
+                        self.compile_call(call_struct)
+                    )
+                }
+                _ => unreachable!(),
+            },
+            AssignEnum::None => unreachable!(),
+        }
+    }
+
     pub fn process_expr_token(token: ExprToken) -> String {
         match token {
             ExprToken::Number(n) => format!("{}", n),
-            ExprToken::Variable(v) => v,
+            ExprToken::Variable(v) => v.name,
             ExprToken::Literal(l) => format!("\"{}\"", l),
             ExprToken::Add(l, r) => {
                 let l_token = Self::process_expr_token(*l);

@@ -6,8 +6,8 @@ use crate::{
     types::typechecker::start_types_check,
 };
 use types::{
-    ArgStruct, BlockStruct, BlockType, CallArgStruct, CallStruct, DataType, DefinitionType,
-    FunctionDefinitionStruct, NodeType, VariableDefinitionStruct,
+    ArgStruct, AssignEnum, AssignStruct, BlockStruct, BlockType, CallArgStruct, CallStruct,
+    DataType, DefinitionType, FunctionDefinitionStruct, NodeType, VariableDefinitionStruct,
 };
 
 pub mod types;
@@ -49,6 +49,7 @@ enum TempNodeType {
     Definition(DataType),
     Block(BlockType),
     Call,
+    Assign,
 }
 
 fn get_data_type(str: String) -> Option<DataType> {
@@ -76,7 +77,7 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
 
         // Assign/Call
         _ if tree.self_closing => TempNodeType::Call,
-        _ => todo!("Assign not yet implemented"),
+        _ => TempNodeType::Assign,
     };
 
     let mut node_type: NodeType = match temp_node_type {
@@ -98,7 +99,8 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
                     panic!("You should define name for variable!")
                 };
 
-            let is_func: bool = !tree.children.is_empty()
+            let is_func: bool = (tree.children.len() > 1
+                || matches!(tree.children.first(), Some(ASTBody::Tag(tag)) if tag.name.eq("return") && tag.self_closing))
                 && tree
                     .children
                     .iter()
@@ -149,11 +151,13 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
                 }
                 false => match tree.children.len() {
                     1 => {
-                        let value: &String = match &tree.children[0] {
-                            ASTBody::String(str) => str,
-                            ASTBody::Tag(_) => todo!(
-                                "Function calls inside variable definitions not yet implemented"
+                        let value = match &tree.children[0] {
+                            ASTBody::String(str) => AssignEnum::Expr(
+                                MathParser::new(str.to_string().chars()).parse_expr(),
                             ),
+                            ASTBody::Tag(tag) => {
+                                AssignEnum::Call(Box::new(preprocess_code_tree(*tag.clone())))
+                            }
                         };
 
                         let is_const: bool = tree
@@ -168,14 +172,17 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
                             .count()
                             == 0)
                             .then_some(())
-                            .unwrap_or_else(|| panic!("Function definition cannot take arguments"));
-
-                        let mut math: MathParser = MathParser::new(value.to_string().chars());
+                            .unwrap_or_else(|| {
+                                panic!(
+                                    "Variable `{}` definition cannot take arguments",
+                                    definition_name
+                                )
+                            });
 
                         NodeType::DEFINITION(DefinitionType::Variable(VariableDefinitionStruct {
                             data_type,
                             name: definition_name,
-                            value: math.parse_expr(),
+                            value,
                             is_const,
                         }))
                     }
@@ -204,6 +211,7 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
                 args: args.collect(),
             }
         }),
+        TempNodeType::Assign => NodeType::ASSIGN(AssignStruct::new(tree.name)),
     };
 
     tree.children
@@ -217,24 +225,23 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
                     DefinitionType::Function(fds) => {
                         fds.children.push(Box::new(preprocess_code_tree(*node)))
                     }
-                    DefinitionType::Variable(_) => {
-                        todo!("Function calls inside variable definitions not yet implemented")
-                    }
+                    DefinitionType::Variable(_) => {}
                 },
                 NodeType::CALL(_) => unreachable!("HOW IT'S POSSIBLE??"),
-                _ => todo!(),
+                NodeType::ASSIGN(ref mut assign_struct) => {
+                    assign_struct.body = AssignEnum::Call(Box::new(preprocess_code_tree(*node)))
+                }
             },
             ASTBody::String(s) => match node_type {
                 NodeType::BLOCK(_) => panic!("String tags not supported inside blocks"),
                 NodeType::DEFINITION(ref mut definition_type) => match definition_type {
                     DefinitionType::Function(_) => panic!("Cannot use string tags inside function"),
-                    DefinitionType::Variable(ref mut fds) => {
-                        let mut math: MathParser = MathParser::new(s.chars());
-                        fds.value = math.parse_expr();
-                    }
+                    DefinitionType::Variable(_) => {}
                 },
                 NodeType::CALL(_) => unreachable!("HOW IT'S POSSIBLE??"),
-                _ => todo!(),
+                NodeType::ASSIGN(ref mut assign_struct) => {
+                    assign_struct.body = AssignEnum::Expr(MathParser::new(s.chars()).parse_expr())
+                }
             },
         });
 

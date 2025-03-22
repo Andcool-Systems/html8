@@ -1,14 +1,32 @@
 use std::collections::HashMap;
 
+use crate::code_tree::types::AssignEnum;
 use crate::math::errors::DefinitionNotFound;
 use crate::{code_tree::types::DataType, definitions::Defined, iter::Iter};
 
 pub mod errors;
 
 #[derive(Debug, Clone)]
+pub struct VariableType {
+    pub name: String,
+    pub data_type: DataType,
+    pub is_func: bool,
+}
+
+impl VariableType {
+    pub fn new(name: String, data_type: DataType, is_func: bool) -> Self {
+        Self {
+            name,
+            data_type,
+            is_func,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum ExprToken {
     Number(i32),
-    Variable(String),
+    Variable(VariableType),
     Literal(String),
     Add(Box<ExprToken>, Box<ExprToken>),
     Sub(Box<ExprToken>, Box<ExprToken>),
@@ -136,7 +154,7 @@ impl MathParser {
                 .and_then(|ch: char| ch.is_alphanumeric().then(|| self.iter.next().unwrap()))
         }));
 
-        ExprToken::Variable(buf)
+        ExprToken::Variable(VariableType::new(buf, DataType::Any, false))
     }
 
     fn process_literal(&mut self) -> ExprToken {
@@ -160,11 +178,17 @@ impl MathParser {
 }
 
 impl ExprToken {
-    pub fn get_type(&self, scope: &HashMap<String, Defined>) -> DataType {
+    pub fn get_type(&mut self, scope: &HashMap<String, Defined>) -> DataType {
         match self {
             ExprToken::Number(_) => DataType::Int,
             ExprToken::Literal(_) => DataType::Str,
-            ExprToken::Variable(var) => ExprToken::get_var_type(var.to_string(), scope),
+            ExprToken::Variable(var) => {
+                var.data_type = ExprToken::get_var_type(var.name.to_string(), scope);
+                var.is_func = scope
+                    .get(&var.name)
+                    .map_or(false, |def| matches!(def, Defined::Function(_)));
+                var.data_type.clone()
+            }
             ExprToken::Add(lhs, rhs)
             | ExprToken::Sub(lhs, rhs)
             | ExprToken::Mul(lhs, rhs)
@@ -210,7 +234,7 @@ impl ExprToken {
 
     fn recursive_math_def_check(token: ExprToken, def: &mut Vec<String>) {
         match token {
-            ExprToken::Variable(n) => def.push(n),
+            ExprToken::Variable(n) => def.push(n.name),
             ExprToken::Add(a, b)
             | ExprToken::Sub(a, b)
             | ExprToken::Mul(a, b)
@@ -231,9 +255,10 @@ impl ExprToken {
         match self {
             ExprToken::Number(_) | ExprToken::Literal(_) => self,
             ExprToken::Variable(n) => {
-                if let Some(Defined::Variable(variable)) = scope.get(&n) {
-                    if variable.is_const {
-                        return variable.value.clone();
+                if let Some(Defined::Variable(variable)) = scope.get(&n.name) {
+                    if let (AssignEnum::Expr(e), true) = (variable.value.clone(), variable.is_const)
+                    {
+                        return e.clone();
                     }
                 }
                 ExprToken::Variable(n)

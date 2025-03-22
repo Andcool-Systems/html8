@@ -9,10 +9,22 @@
         <!-- Call function -->
         <print_hello arg="HTML8!" />
 
-        <void name="sum" a="int" b="int">
-            <println {a + b} />
-        </void>
-        <sum a={2} b={2} />
+        <int name="sum" a="int" b="int">
+            <return {a + b} />
+        </int>
+
+        <int name="func">
+            <int name="temp">
+                <sum a={2} b={2} />
+            </int>
+            <return {temp} />
+        </int>
+
+        <int name="temp">
+            <func />
+        </int>
+        <println {temp} />
+
     </main>
 </html>
 

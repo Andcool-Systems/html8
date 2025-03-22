@@ -10,12 +10,12 @@
 */
 
 use crate::{
-    code_tree::types::CallArgStruct,
     code_tree::types::{
-        ArgStruct, CallStruct, DataType, DefinitionType, FunctionDefinitionStruct, NodeType,
+        ArgStruct, CallArgStruct, CallStruct, DataType, DefinitionType, FunctionDefinitionStruct,
+        NodeType,
     },
     compiler::CLang,
-    math::ExprToken,
+    math::{ExprToken, VariableType},
 };
 
 pub struct Std;
@@ -87,13 +87,27 @@ impl Std {
         ))
     }
 
+    fn compile_var_println(l: &VariableType) -> String {
+        let format_key = match l.data_type {
+            DataType::Int => String::from("%d"),
+            DataType::Bool => String::from("%d"),
+            DataType::Str => String::from("%s"),
+            DataType::Void | DataType::Any => unreachable!(),
+        };
+        if !l.is_func {
+            format!("printf(\"{}\\n\", {});", format_key, l.name)
+        } else {
+            format!("printf(\"<function at %d>\\n\", {});", l.name)
+        }
+    }
+
     pub fn compile_println(call: CallStruct) -> String {
         call.args
             .iter()
             .find(|a: &&CallArgStruct| a.name.eq("arg"))
             .map(|arg: &CallArgStruct| match &arg.value {
                 Some(ExprToken::Literal(l)) => format!("printf(\"{}\\n\");", l),
-                Some(ExprToken::Variable(l)) => format!("printf(\"%s\\n\", {});", l),
+                Some(ExprToken::Variable(l)) => Self::compile_var_println(l),
                 Some(_) => format!(
                     "printf(\"%d\\n\", {});",
                     CLang::process_expr_token(arg.value.clone().unwrap())
@@ -107,12 +121,27 @@ impl Std {
         if let Some(arg) = call.args.iter().find(|a: &&CallArgStruct| a.name.eq("arg")) {
             return match &arg.value {
                 Some(ExprToken::Literal(l)) => format!("printf(\"{}\");", l),
-                Some(ExprToken::Variable(l)) => format!("printf(\"%s\", {});", l),
+                Some(ExprToken::Variable(l)) => Self::compile_var_println(l),
                 Some(_) => format!(
                     "printf(\"%d\", {});",
                     CLang::process_expr_token(arg.value.clone().unwrap())
                 ),
                 None => format!("printf(\"%d\", {});", true),
+            };
+        }
+        String::new()
+    }
+
+    pub fn compile_return(call: CallStruct) -> String {
+        if let Some(arg) = call.args.iter().find(|a: &&CallArgStruct| a.name.eq("arg")) {
+            return match &arg.value {
+                Some(ExprToken::Literal(l)) => format!("return \"{}\";", l),
+                Some(ExprToken::Variable(l)) => format!("return {};", l.name),
+                Some(_) => format!(
+                    "return {};",
+                    CLang::process_expr_token(arg.value.clone().unwrap())
+                ),
+                None => format!("return true;"),
             };
         }
         String::new()

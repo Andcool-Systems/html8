@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use crate::code_tree::types::{ArgStruct, CallArgStruct};
+use crate::code_tree::types::{ArgStruct, AssignEnum, CallArgStruct};
+use crate::math::VariableType;
 use crate::{
     code_tree::types::{DataType, DefinitionType, NodeType, VariableDefinitionStruct},
     definitions::Defined,
@@ -29,9 +30,13 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
                     scope.insert(
                         arg.name.clone(),
                         Defined::Variable(VariableDefinitionStruct {
-                            data_type: arg.data_type,
+                            data_type: arg.data_type.clone(),
                             name: arg.name.clone(),
-                            value: ExprToken::Variable(arg.name.clone()),
+                            value: AssignEnum::Expr(ExprToken::Variable(VariableType::new(
+                                arg.name.clone(),
+                                arg.data_type,
+                                false
+                            ))),
                             is_const: true,
                         }),
                     );
@@ -43,17 +48,68 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
                         check(child, &mut scope);
                     });
 
+                let return_node: Option<&Box<NodeType>> = fds.children.iter().find(|child| {
+                    if let NodeType::CALL(ref call) = ***child {
+                        call.calling_name == "return"
+                    } else {
+                        false
+                    }
+                });
+
+                if !matches!(fds.data_type, DataType::Void) {
+                    match return_node {
+                        Some(return_node) => match *return_node.clone() {
+                            NodeType::CALL(mut call_struct) => {
+                                let return_value = 
+                                        call_struct.args
+                                            .iter_mut()
+                                            .find(|a| a.name == "arg").unwrap();
+                
+                                let return_type = match &mut return_value.value {
+                                    Some(expr_token) => {
+                                        expr_token.get_type(&scope)
+                                    }
+                                    None => DataType::Bool,
+                                };
+
+                                if return_type != fds.data_type {
+                                    panic!("Return statement inside `{}` function has wrong type: Expected {:?}, got {:?}.",
+                                        fds.name, fds.data_type, return_type
+                                    );
+                                }
+                            
+                            }
+                            _ => panic!("Unknown return tag"),
+                        },
+                        None => panic!("Function `{}` must have return statement", fds.name),
+                    }
+                }
+
                 scope.insert(fds.name.clone(), Defined::Function(fds.clone()));
             }
             DefinitionType::Variable(ref mut vds) => {
-                let value_type: DataType = vds.value.get_type(&scope);
+                let value_type = match &mut vds.value {
+                    AssignEnum::Expr(ref mut expr_token) => {
+                        expr_token.optimize(&scope);
+                        expr_token.get_type(&scope)
+                    },
+                    AssignEnum::Call(node_type) => match *node_type.clone() {
+                        NodeType::CALL(call_struct) => {
+                            match scope.get(&call_struct.calling_name) {
+                                Some(Defined::Function(f)) => f.data_type.clone(),
+                                _ => unreachable!()
+                            }
+                        },
+                        _ => unreachable!()
+                    },
+                    AssignEnum::None =>unreachable!(),
+                };
                 (vds.data_type != value_type).then(|| {
                     panic!(
                         "Value type for variable `{}` is incorrect! Expected `{:?}`, got `{:?}`",
                         vds.name, vds.data_type, value_type
                     );
                 });
-                vds.value.optimize(&scope);
                 scope.insert(vds.name.clone(), Defined::Variable(vds.clone()));
             }
         },
@@ -78,7 +134,39 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
                 });
             }
         }
-        NodeType::ASSIGN(_) => todo!(),
+        NodeType::ASSIGN(ref mut assign_struct) => match &mut assign_struct.body {
+            AssignEnum::Expr(ref mut expr_token) => {
+                if let Some(Defined::Variable(var)) = scope.get(&assign_struct.name) {
+                    let expr_type = expr_token.get_type(&scope);
+                    if var.data_type != expr_type {
+                        panic!(
+                            "Assign to `{}` has wrong type! Expected: `{:?}`, got `{:?}`",
+                            assign_struct.name, var.data_type, expr_type 
+                        );
+                    }
+                }
+            },
+            AssignEnum::Call(node_type) => match *node_type.clone() {
+                NodeType::CALL(call_struct) => {
+                    let call_type  = scope.get(&call_struct.calling_name);
+                    let assign_type = scope.get(&assign_struct.name);
+
+                    if let (
+                        Some(Defined::Variable(var)),
+                        Some(Defined::Function(fun))
+                    ) = (assign_type, call_type) {
+                        if var.data_type != fun.data_type {
+                            panic!(
+                                "Assign to `{}` has wrong type! Expected: `{:?}`, got `{:?}`",
+                                assign_struct.name, var.data_type, fun.data_type 
+                            );
+                        }
+                    }
+                },
+                _ => unreachable!(),
+            },
+            AssignEnum::None => unreachable!(),
+        },
     }
 
     *defined = scope;
