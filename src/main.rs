@@ -1,6 +1,3 @@
-#![feature(impl_trait_in_bindings)]
-#![feature(let_chains)]
-
 use std::io::Write;
 use std::process::{exit, Output};
 use std::{fs, path::Path, process::Command};
@@ -25,7 +22,7 @@ fn main() -> Result<()> {
     let contents: String = fs::read_to_string("./example.html8")?;
     let tree: ASTNode = start_parse(contents);
     let code_tree: NodeType = start_generating_code_tree(tree);
-    let mut comp: impl CompilerCodegen = CLang::new(code_tree);
+    let mut comp = CLang::new(code_tree);
     let code: String = comp.compile();
 
     let dir_path: &str = "output";
