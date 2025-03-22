@@ -13,7 +13,7 @@ enum ParseState {
 }
 
 pub fn start_parse(contents: String) -> ASTNode {
-    let mut iter = Iter::from(contents.chars());
+    let mut iter: Iter<char> = Iter::from(contents.chars());
     parse(&mut iter)
 }
 
@@ -26,18 +26,19 @@ pub fn parse(iter: &mut Iter<char>) -> ASTNode {
         props: Vec::new(),
     };
 
-    let mut buffer = String::new();
-    let mut closing_tag = String::new();
+    let (mut buffer, mut closing_tag): (String, String) = (String::new(), String::new());
     while let Some(char) = iter.next() {
         match char {
             '<' => match parse_state {
                 ParseState::None => parse_state = ParseState::Tag,
                 ParseState::Body => {
                     buffer = buffer.trim().to_owned();
-                    if !buffer.is_empty() {
+
+                    (!buffer.is_empty()).then(|| {
                         tag.children.push(ASTBody::String(buffer.clone()));
                         buffer.clear();
-                    }
+                    });
+
                     if let Some('/') = iter.peek() {
                         iter.next(); // Consume '/'
                         parse_state = ParseState::ClosingTag;
@@ -51,12 +52,12 @@ pub fn parse(iter: &mut Iter<char>) -> ASTNode {
             '>' => match parse_state {
                 ParseState::Props | ParseState::Tag => parse_state = ParseState::Body,
                 ParseState::ClosingTag => {
-                    if tag.name != closing_tag {
+                    (tag.name != closing_tag).then(|| {
                         panic!(
                             "Unexpected closing tag: </{}>. Expected </{}>",
                             closing_tag, tag.name
                         );
-                    }
+                    });
                     return tag;
                 }
                 _ => panic!("Unexpected `>` tag"),
@@ -108,7 +109,7 @@ fn process_prop(iter: &mut Iter<char>) -> ASTProp {
         value: None,
     };
 
-    let mut buffer = String::new();
+    let mut buffer: String = String::new();
     let mut value_type = PropValueType::None;
     while let Some(char) = iter.peek() {
         match char {

@@ -1,7 +1,7 @@
 use crate::{
     definitions::start_def_check,
-    libs::std::STD,
-    math::math::{ExprToken, MathParser},
+    libs::std::Std,
+    math::{ExprToken, MathParser},
     parser::types::{ASTBody, ASTNode, PropType},
     types::typechecker::start_types_check,
 };
@@ -11,15 +11,15 @@ use types::{
 };
 
 pub mod types;
+use crate::parser::types::ASTProp;
 use regex::Regex;
 
 fn is_valid_identifier(s: &str) -> bool {
-    let re = Regex::new(r"^[a-zA-Z_]+$").unwrap();
-    re.is_match(s)
+    Regex::new(r"^[a-zA-Z_]+$").unwrap().is_match(s)
 }
 
 pub fn start_generating_code_tree(tree: ASTNode) -> NodeType {
-    let mut tree = preprocess_code_tree(tree);
+    let mut tree: NodeType = preprocess_code_tree(tree);
 
     match tree {
         NodeType::BLOCK(ref mut block_struct) if block_struct.tag == BlockType::Html => {
@@ -28,7 +28,7 @@ pub fn start_generating_code_tree(tree: ASTNode) -> NodeType {
                     NodeType::BLOCK(ref mut block_struct)
                         if block_struct.tag == BlockType::Main =>
                     {
-                        block_struct.children.splice(0..0, STD::use_lib());
+                        block_struct.children.splice(0..0, Std::use_lib());
                     }
                     NodeType::BLOCK(ref mut block_struct)
                         if block_struct.tag == BlockType::Head => {} // Will be used later
@@ -61,7 +61,7 @@ fn get_data_type(str: String) -> Option<DataType> {
 }
 
 fn preprocess_code_tree(tree: ASTNode) -> NodeType {
-    let temp_node_type = match &tree.name {
+    let temp_node_type: TempNodeType = match &tree.name {
         // Definitions
         s if s == "int" => TempNodeType::Definition(DataType::Int),
         s if s == "bool" => TempNodeType::Definition(DataType::Bool),
@@ -79,108 +79,120 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
         _ => todo!("Assign not yet implemented"),
     };
 
-    let mut node_type = match temp_node_type {
+    let mut node_type: NodeType = match temp_node_type {
         TempNodeType::Block(block_type) => NodeType::BLOCK(BlockStruct {
             tag: block_type,
             children: Vec::new(),
         }),
         TempNodeType::Definition(data_type) => {
-            let definition_name = if let Some(prop) = tree.props.iter().find(|p| p.name == "name") {
-                if let Some(PropType::Literal(new_name)) = &prop.value {
-                    if is_valid_identifier(&new_name) {
-                        new_name.to_string()
+            let definition_name: String =
+                if let Some(prop) = tree.props.iter().find(|p: &&ASTProp| p.name == "name") {
+                    if let Some(PropType::Literal(new_name)) = &prop.value {
+                        is_valid_identifier(new_name)
+                            .then(|| new_name.to_string())
+                            .unwrap_or_else(|| panic!("`{}` is not valid name!", new_name))
                     } else {
-                        panic!("`{}` is not valid name!", new_name)
+                        panic!("Cannot use dynamic value for defining a variable name!")
                     }
                 } else {
-                    panic!("Cannot use dynamic value for defining a variable name!")
-                }
-            } else {
-                panic!("You should define name for variable!")
-            };
+                    panic!("You should define name for variable!")
+                };
 
-            let is_func = tree.children.len() >= 1
+            let is_func: bool = !tree.children.is_empty()
                 && tree
                     .children
                     .iter()
-                    .all(|child| matches!(child, ASTBody::Tag(_)));
-            if is_func {
-                let args = tree
-                    .props
-                    .iter()
-                    .filter(|prop| prop.name != "name")
-                    .map(|prop| {
-                        let data_type = prop.value.clone().unwrap_or_else(|| {
-                            panic!("Function argument cannot be a flag: {}", prop.name)
-                        });
+                    .all(|child: &ASTBody| matches!(child, ASTBody::Tag(_)));
 
-                        if let PropType::Literal(v) = data_type {
-                            return ArgStruct {
-                                name: prop.name.clone(),
-                                data_type: get_data_type(v).unwrap_or_else(|| {
+            match is_func {
+                true => {
+                    let args = tree
+                        .props
+                        .iter()
+                        .filter(|prop: &&ASTProp| prop.name != "name")
+                        .map(|prop: &ASTProp| {
+                            let data_type: PropType = prop.value.clone().unwrap_or_else(|| {
+                                panic!("Function argument cannot be a flag: {}", prop.name)
+                            });
+
+                            matches!(data_type, PropType::Literal(_))
+                                .then(|| {
+                                    if let PropType::Literal(v) = data_type {
+                                        ArgStruct {
+                                            name: prop.name.clone(),
+                                            data_type: get_data_type(v).unwrap_or_else(|| {
+                                                panic!(
+                                                    "Unknown data type for function argument: {:?}",
+                                                    prop.value
+                                                )
+                                            }),
+                                        }
+                                    } else {
+                                        unreachable!()
+                                    }
+                                })
+                                .unwrap_or_else(|| {
                                     panic!(
-                                        "Unknown data type for function argument: {:?}",
+                                        "Function argument type cannot be a variable: {:?}",
                                         prop.value
                                     )
-                                }),
-                            };
-                        } else {
-                            panic!(
-                                "Function argument type cannot be a variable: {:?}",
-                                prop.value
-                            )
-                        }
-                    });
-                NodeType::DEFINITION(DefinitionType::Function(FunctionDefinitionStruct {
-                    data_type,
-                    name: definition_name,
-                    children: Vec::new(),
-                    args: args.collect(),
-                    must_be_compiled: true,
-                }))
-            } else if tree.children.len() == 1 {
-                let value = match &tree.children[0] {
-                    ASTBody::String(str) => str,
-                    ASTBody::Tag(_) => {
-                        todo!("Function calls inside variable definitions not yet implemented")
-                    }
-                };
+                                })
+                        });
 
-                let is_const = tree
-                    .props
-                    .iter()
-                    .find(|prop| prop.name == "const" && prop.value.is_none());
-
-                if !tree
-                    .props
-                    .iter()
-                    .filter(|prop| prop.name != "const" && prop.name != "name")
-                    .collect::<Vec<_>>()
-                    .is_empty()
-                {
-                    panic!("Function definition cannot take arguments")
+                    NodeType::DEFINITION(DefinitionType::Function(FunctionDefinitionStruct {
+                        data_type,
+                        name: definition_name,
+                        children: Vec::new(),
+                        args: args.collect(),
+                        must_be_compiled: true,
+                    }))
                 }
+                false => match tree.children.len() {
+                    1 => {
+                        let value: &String = match &tree.children[0] {
+                            ASTBody::String(str) => str,
+                            ASTBody::Tag(_) => todo!(
+                                "Function calls inside variable definitions not yet implemented"
+                            ),
+                        };
 
-                let mut math = MathParser::new(value.to_string().chars());
-                NodeType::DEFINITION(DefinitionType::Variable(VariableDefinitionStruct {
-                    data_type,
-                    name: definition_name,
-                    value: math.parse_expr(),
-                    is_const: is_const.is_some(),
-                }))
-            } else {
-                panic!("All children should be a nodes, not values!");
+                        let is_const: bool = tree
+                            .props
+                            .iter()
+                            .any(|prop: &ASTProp| prop.name == "const" && prop.value.is_none());
+
+                        (tree
+                            .props
+                            .iter()
+                            .filter(|prop: &&ASTProp| prop.name != "const" && prop.name != "name")
+                            .count()
+                            == 0)
+                            .then_some(())
+                            .unwrap_or_else(|| panic!("Function definition cannot take arguments"));
+
+                        let mut math: MathParser = MathParser::new(value.to_string().chars());
+
+                        NodeType::DEFINITION(DefinitionType::Variable(VariableDefinitionStruct {
+                            data_type,
+                            name: definition_name,
+                            value: math.parse_expr(),
+                            is_const,
+                        }))
+                    }
+                    _ => panic!("All children should be nodes, not values!"),
+                },
             }
         }
         TempNodeType::Call => NodeType::CALL({
-            let args = tree.props.iter().map(|prop| {
-                let mut value = None;
-                if let Some(val) = &prop.value {
-                    value = match val {
+            let args = tree.props.iter().map(|prop: &ASTProp| {
+                let value: Option<ExprToken> = prop
+                    .clone()
+                    .value
+                    .map(|val: PropType| match val {
                         PropType::Literal(s) => Some(ExprToken::Literal(s.to_string())),
                         PropType::Var(s) => Some(MathParser::new(s.chars()).parse_expr()),
-                    };
-                }
+                    })
+                    .unwrap_or(None);
 
                 CallArgStruct {
                     name: prop.name.clone(),
@@ -194,8 +206,9 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
         }),
     };
 
-    for child in tree.children {
-        match child {
+    tree.children
+        .into_iter()
+        .for_each(|child: ASTBody| match child {
             ASTBody::Tag(node) => match node_type {
                 NodeType::BLOCK(ref mut block_struct) => block_struct
                     .children
@@ -216,15 +229,14 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
                 NodeType::DEFINITION(ref mut definition_type) => match definition_type {
                     DefinitionType::Function(_) => panic!("Cannot use string tags inside function"),
                     DefinitionType::Variable(ref mut fds) => {
-                        let mut math = MathParser::new(s.chars());
+                        let mut math: MathParser = MathParser::new(s.chars());
                         fds.value = math.parse_expr();
                     }
                 },
                 NodeType::CALL(_) => unreachable!("HOW IT'S POSSIBLE??"),
                 _ => todo!(),
             },
-        }
-    }
+        });
 
     node_type
 }

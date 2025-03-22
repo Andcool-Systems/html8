@@ -1,4 +1,4 @@
-use crate::math::math::ExprToken;
+use crate::math::ExprToken;
 
 // Possible data types
 #[derive(Debug, Clone, PartialEq)]
@@ -12,7 +12,7 @@ pub enum DataType {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
+#[allow(dead_code, clippy::upper_case_acronyms)]
 pub enum NodeType {
     BLOCK(BlockStruct),
     DEFINITION(DefinitionType),
@@ -24,6 +24,7 @@ pub enum NodeType {
 #[derive(Debug, Clone)]
 pub struct BlockStruct {
     pub tag: BlockType,
+    #[allow(clippy::vec_box)]
     pub children: Vec<Box<NodeType>>,
 }
 
@@ -64,9 +65,11 @@ pub struct VariableDefinitionStruct {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct FunctionDefinitionStruct {
     pub data_type: DataType,
     pub name: String,
+    #[allow(clippy::vec_box)]
     pub children: Vec<Box<NodeType>>,
     pub args: Vec<ArgStruct>,
     pub must_be_compiled: bool,
