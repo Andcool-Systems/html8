@@ -1,9 +1,12 @@
 <html>
     <main>
+        <!-- Define function -->
         <void name="print_hello" arg="str">
             <print "Hello, " />
             <println {arg} />
         </void>
+
+        <!-- Call function -->
         <print_hello arg="HTML8!" />
 
         <void name="sum" a="int" b="int">

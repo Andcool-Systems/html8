@@ -143,7 +143,6 @@ impl MathParser {
         self.iter.next();
         let mut buf: String = String::new();
 
-        // ну нафиг. я не буду это переделывать.
         while let Some(ch) = self.iter.peek() {
             match ch {
                 '"' => {

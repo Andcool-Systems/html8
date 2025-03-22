@@ -29,25 +29,29 @@ pub fn parse(iter: &mut Iter<char>) -> ASTNode {
     let (mut buffer, mut closing_tag): (String, String) = (String::new(), String::new());
     while let Some(char) = iter.next() {
         match char {
-            '<' => match parse_state {
-                ParseState::None => parse_state = ParseState::Tag,
-                ParseState::Body => {
-                    buffer = buffer.trim().to_owned();
+            '<' => match iter.peek() {
+                Some('!') => handle_comment(iter),
+                Some(_) => match parse_state {
+                    ParseState::None => parse_state = ParseState::Tag,
+                    ParseState::Body => {
+                        buffer = buffer.trim().to_owned();
 
-                    (!buffer.is_empty()).then(|| {
-                        tag.children.push(ASTBody::String(buffer.clone()));
-                        buffer.clear();
-                    });
+                        (!buffer.is_empty()).then(|| {
+                            tag.children.push(ASTBody::String(buffer.clone()));
+                            buffer.clear();
+                        });
 
-                    if let Some('/') = iter.peek() {
-                        iter.next(); // Consume '/'
-                        parse_state = ParseState::ClosingTag;
-                    } else {
-                        iter.step_back();
-                        tag.children.push(ASTBody::Tag(Box::new(parse(iter))));
+                        if let Some('/') = iter.peek() {
+                            iter.next(); // Consume '/'
+                            parse_state = ParseState::ClosingTag;
+                        } else {
+                            iter.step_back();
+                            tag.children.push(ASTBody::Tag(Box::new(parse(iter))));
+                        }
                     }
-                }
-                _ => panic!("Unexpected `<` tag"),
+                    _ => panic!("Unexpected `<` tag"),
+                },
+                None => panic!("Unexpected EOF"),
             },
             '>' => match parse_state {
                 ParseState::Props | ParseState::Tag => parse_state = ParseState::Body,
@@ -86,6 +90,28 @@ pub fn parse(iter: &mut Iter<char>) -> ASTNode {
     }
 
     panic!("Unexpected EOF");
+}
+
+fn handle_comment(iter: &mut Iter<char>) {
+    iter.step_back();
+
+    if iter.next() != Some('<')
+        || iter.next() != Some('!')
+        || iter.next() != Some('-')
+        || iter.next() != Some('-')
+    {
+        return;
+    }
+
+    while let Some(c) = iter.next() {
+        if c == '-' && iter.peek() == Some('-') {
+            iter.next();
+            if iter.peek() == Some('>') {
+                iter.next();
+                break;
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
