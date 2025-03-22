@@ -100,7 +100,7 @@ impl CLang {
             .then(|| format!("{}_func", f.name))
             .unwrap_or(f.name.clone());
 
-        let args: String = f
+        let mut args: Vec<String> = f
             .args
             .iter()
             .map(|arg: &ArgStruct| {
@@ -115,11 +115,10 @@ impl CLang {
                     arg.name
                 )
             })
-            .collect::<Vec<String>>()
-            .join(", ");
+            .collect::<Vec<String>>();
+        args.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
 
         let mut children: Vec<String> = Vec::new();
-
         f.children.into_iter().for_each(|child: Box<NodeType>| {
             let (_, stmt): (String, String) = self._compile(*child);
             (!stmt.is_empty()).then(|| children.push(stmt));
@@ -129,7 +128,7 @@ impl CLang {
             "{} {}({}) {{ {} }}",
             Self::convert_types(f.data_type),
             fn_name,
-            args,
+            args.join(", "),
             children.join("\n")
         )
     }
@@ -139,14 +138,14 @@ impl CLang {
             .then(|| format!("{}_func", call.calling_name))
             .unwrap_or_else(|| call.calling_name.clone());
 
-        let args = call
+        let mut args: Vec<String> = call
             .args
             .iter()
             .map(|a| Self::process_expr_token(a.value.clone().unwrap()))
-            .collect::<Vec<String>>()
-            .join(", ");
+            .collect::<Vec<String>>();
+        args.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
 
-        format!("{}({});", calling_name, args)
+        format!("{}({});", calling_name, args.join(", "))
     }
 
     pub fn process_expr_token(token: ExprToken) -> String {
