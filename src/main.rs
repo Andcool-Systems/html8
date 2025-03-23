@@ -18,10 +18,10 @@ fn main() -> Result<()> {
     let tree: ASTNode = start_parse(contents);
     let code_tree: NodeType = start_generating_code_tree(tree);
 
-    let mut backends = load_backends(r"D:\projects\html8_1\backends");
+    let mut backends = load_backends("./backends");
 
     if backends.is_empty() {
-        println!(r"Не найдено бэкендов в 'D:\projects\html8_1\backends'");
+        println!("Не найдено бэкендов в './backends'");
         exit(1);
     }
 
