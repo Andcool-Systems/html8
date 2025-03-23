@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use crate::code_tree::types::AssignEnum;
 use crate::math::errors::DefinitionNotFound;
-use crate::{code_tree::types::DataType, definitions::Defined, iter::Iter};
+use crate::types::AssignEnum;
+use crate::{definitions::Defined, iter::Iter, types::DataType};
 
 pub mod errors;
 

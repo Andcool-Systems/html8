@@ -1,17 +1,19 @@
 use crate::{
-    definitions::start_def_check,
-    libs::std::Std,
-    math::{ExprToken, MathParser},
     parser::types::{ASTBody, ASTNode, PropType},
     types::typechecker::start_types_check,
 };
-use types::{
-    ArgStruct, AssignEnum, AssignStruct, BlockStruct, BlockType, CallArgStruct, CallStruct,
-    DataType, DefinitionType, ForStruct, FunctionDefinitionStruct, NodeType, ServiceBlockType,
-    VariableDefinitionStruct,
+
+use compiler_core::{
+    definitions::start_def_check,
+    libs::std::Std,
+    math::{ExprToken, MathParser},
+    types::{
+        ArgStruct, AssignEnum, AssignStruct, BlockStruct, BlockType, CallArgStruct, CallStruct,
+        DataType, DefinitionType, ForStruct, FunctionDefinitionStruct, NodeType, ServiceBlockType,
+        VariableDefinitionStruct,
+    },
 };
 
-pub mod types;
 use crate::parser::types::ASTProp;
 use regex::Regex;
 

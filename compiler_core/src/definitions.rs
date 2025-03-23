@@ -1,13 +1,13 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::code_tree::types::{ArgStruct, AssignEnum, CallArgStruct, ServiceBlockType};
-use crate::math::errors::DefinitionNotFound;
-use crate::math::VariableType;
-use crate::{
-    code_tree::types::{
-        DefinitionType, FunctionDefinitionStruct, NodeType, VariableDefinitionStruct,
-    },
+use crate as compiler_core;
+
+use compiler_core::math::VariableType;
+use compiler_core::math::errors::DefinitionNotFound;
+use compiler_core::types::{ArgStruct, AssignEnum, CallArgStruct, ServiceBlockType};
+use compiler_core::{
     math::ExprToken,
+    types::{DefinitionType, FunctionDefinitionStruct, NodeType, VariableDefinitionStruct},
 };
 
 #[derive(Debug, Clone)]
@@ -120,7 +120,7 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
             }
         },
         NodeType::CALL(call_struct) => check_fn_call(defined, call_struct),
-        NodeType::ASSIGN(ref mut call_arg_struct) => {
+        &mut NodeType::ASSIGN(ref mut call_arg_struct) => {
             match defined.get(&call_arg_struct.name) {
                 Some(Defined::Function(_)) => {
                     panic!("Cannot assign value to `{}` function", call_arg_struct.name)
@@ -147,7 +147,7 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
                 AssignEnum::None => unreachable!(),
             }
         }
-        NodeType::ServiceBlock(ref mut sbt) => match sbt {
+        &mut NodeType::ServiceBlock(ref mut sbt) => match sbt {
             ServiceBlockType::For(for_struct) => {
                 for_struct
                     .start
@@ -178,7 +178,7 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
 
 fn check_fn_call(
     defined: &mut HashMap<String, Defined>,
-    call_struct: &mut crate::code_tree::types::CallStruct,
+    call_struct: &mut compiler_core::types::CallStruct,
 ) {
     let entry = defined.get(&call_struct.calling_name);
 

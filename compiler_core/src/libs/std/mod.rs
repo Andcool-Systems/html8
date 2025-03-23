@@ -10,12 +10,12 @@
 */
 
 use crate::{
-    code_tree::types::{
+    math::{ExprToken, VariableType},
+    process_expr_token,
+    types::{
         ArgStruct, CallArgStruct, CallStruct, DataType, DefinitionType, FunctionDefinitionStruct,
         NodeType,
     },
-    compiler::CLang,
-    math::{ExprToken, VariableType},
 };
 
 pub struct Std;
@@ -110,7 +110,7 @@ impl Std {
                 Some(ExprToken::Variable(l)) => Self::compile_var_println(l, String::from("\\n")),
                 Some(_) => format!(
                     "printf(\"%d\\n\", {});",
-                    CLang::process_expr_token(arg.value.clone().unwrap())
+                    process_expr_token(arg.value.clone().unwrap())
                 ),
                 None => format!("printf(\"%d\\n\", {});", true),
             })
@@ -124,7 +124,7 @@ impl Std {
                 Some(ExprToken::Variable(l)) => Self::compile_var_println(l, String::new()),
                 Some(_) => format!(
                     "printf(\"%d\", {});",
-                    CLang::process_expr_token(arg.value.clone().unwrap())
+                    process_expr_token(arg.value.clone().unwrap())
                 ),
                 None => format!("printf(\"%d\", {});", true),
             };
@@ -137,10 +137,7 @@ impl Std {
             return match &arg.value {
                 Some(ExprToken::Literal(l)) => format!("return \"{}\";", l),
                 Some(ExprToken::Variable(l)) => format!("return {};", l.name),
-                Some(_) => format!(
-                    "return {};",
-                    CLang::process_expr_token(arg.value.clone().unwrap())
-                ),
+                Some(_) => format!("return {};", process_expr_token(arg.value.clone().unwrap())),
                 None => format!("return true;"),
             };
         }

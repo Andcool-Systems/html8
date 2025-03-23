@@ -1,20 +1,15 @@
-use std::io::Write;
-use std::process::{exit, Output};
-use std::{fs, path::Path, process::Command};
-
-use crate::{
-    code_tree::types::NodeType, compiler::CLang, compiler::CompilerCodegen, parser::types::ASTNode,
-};
+use crate::backends_loader::load_backends;
+use crate::parser::types::ASTNode;
 use anyhow::Result;
 use code_tree::start_generating_code_tree;
+use compiler_core::backend::Backend;
+use compiler_core::types::NodeType;
 use parser::start_parse;
+use std::fs;
+use std::process::exit;
 
+mod backends_loader;
 mod code_tree;
-mod compiler;
-mod definitions;
-mod iter;
-mod libs;
-mod math;
 mod parser;
 mod types;
 
@@ -22,47 +17,24 @@ fn main() -> Result<()> {
     let contents: String = fs::read_to_string("./example.html8")?;
     let tree: ASTNode = start_parse(contents);
     let code_tree: NodeType = start_generating_code_tree(tree);
-    let mut comp = CLang::new(code_tree);
-    let code: String = comp.compile();
 
-    let dir_path: &str = "output";
-    let file_path: String = format!("{}/code.c", dir_path);
-    let out_path: String = format!("{}/code", dir_path);
+    let mut backends = load_backends(r"D:\projects\html8_1\backends");
 
-    (!Path::new(dir_path).exists()).then(|| fs::create_dir(dir_path).map_err(|_| ()));
+    if backends.is_empty() {
+        println!(r"Не найдено бэкендов в 'D:\projects\html8_1\backends'");
+        exit(1);
+    }
 
-    // println!("{}", code);
+    if !fs::exists("./output").expect("TODO: panic message") {
+        fs::create_dir("./output").expect("TODO: panic message");
+    }
 
-    let mut file: fs::File = fs::File::create(&file_path)?;
-    writeln!(file, "{}", code)?;
-
-    let args: Vec<&str> = vec![
-        &file_path,
-        "-o",
-        &out_path,
-        "-w",
-        "-std=gnu99",
-        "-Wimplicit-int",
-    ];
-    let compiler: &str = "gcc";
-    let compile_out: Output = Command::new(compiler).args(&args).output()?;
-
-    (!compile_out.status.success()).then(|| {
-        println!(
-            "Compilation failed.\n\
-            Command: {} {}\n\
-            Output:\n{}",
-            compiler,
-            args.join(" "),
-            String::from_utf8_lossy(&compile_out.stderr)
-        );
-        exit(-1)
-    });
-
-    println!(
-        "{}",
-        String::from_utf8_lossy(&Command::new("./output/code").output()?.stdout)
-    );
+    if let Some(backend) = backends.get_mut("C-lang") {
+        backend.generate_code(&code_tree);
+        backend.save_code(None).expect("TODO: panic message");
+        backend.compile().expect("TODO: panic message");
+        println!("{}", backend.run().expect("TODO: panic message"));
+    }
 
     Ok(())
 }

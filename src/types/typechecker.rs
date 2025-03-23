@@ -1,12 +1,8 @@
 use std::collections::HashMap;
 
-use crate::code_tree::types::{ArgStruct, AssignEnum, ServiceBlockType};
-use crate::math::VariableType;
-use crate::{
-    code_tree::types::{DataType, DefinitionType, NodeType, VariableDefinitionStruct},
-    definitions::Defined,
-    math::ExprToken,
-};
+use compiler_core::types::{ArgStruct, AssignEnum, ServiceBlockType, DataType, DefinitionType, NodeType, VariableDefinitionStruct};
+use compiler_core::math::{VariableType, ExprToken};
+use compiler_core::definitions::Defined;
 
 pub fn start_types_check(tree: &mut NodeType) {
     check(tree, &mut HashMap::<String, Defined>::new());

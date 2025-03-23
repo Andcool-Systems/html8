@@ -1,6 +1,6 @@
 pub mod types;
 
-use crate::iter::Iter;
+use compiler_core::iter::Iter;
 use types::{ASTBody, ASTNode, ASTProp, PropType};
 
 #[derive(Debug)]
