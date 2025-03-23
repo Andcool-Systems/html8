@@ -1,0 +1,14 @@
+<html>
+    <main>
+        <int name="a">0</int>
+        <int name="b">1</int>
+        <println {a} />
+
+        <for i="i" start={0} end={10}>
+            <println {b} />
+            <int name="next">a + b</int>
+            <a>b</a>
+            <b>next</b>
+        </for>
+    </main>
+</html>

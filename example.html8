@@ -27,6 +27,10 @@
 
         <inc {temp} />
         <println {temp} />
+
+        <for i="name" start={0} end={temp * 2}>
+            <println {name} />
+        </for>
     </main>
 </html>
 

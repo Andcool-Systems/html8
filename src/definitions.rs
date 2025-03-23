@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::code_tree::types::{ArgStruct, AssignEnum, CallArgStruct};
+use crate::code_tree::types::{ArgStruct, AssignEnum, CallArgStruct, ServiceBlockType};
 use crate::math::errors::DefinitionNotFound;
 use crate::math::VariableType;
 use crate::{
@@ -125,7 +125,10 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
                 Some(Defined::Function(_)) => {
                     panic!("Cannot assign value to `{}` function", call_arg_struct.name)
                 }
-                None => panic!("Variable `{}` for assign not defined!", call_arg_struct.name),
+                None => panic!(
+                    "Variable `{}` for assign not defined!",
+                    call_arg_struct.name
+                ),
                 _ => {}
             };
 
@@ -144,6 +147,32 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
                 AssignEnum::None => unreachable!(),
             }
         }
+        NodeType::ServiceBlock(ref mut sbt) => match sbt {
+            ServiceBlockType::For(for_struct) => {
+                for_struct
+                    .start
+                    .check_def(&defined)
+                    .unwrap_or_else(|e: DefinitionNotFound| {
+                        panic!("Variable `{}` not defined", e.var_name)
+                    });
+
+                for_struct
+                    .end
+                    .check_def(&defined)
+                    .unwrap_or_else(|e: DefinitionNotFound| {
+                        panic!("Variable `{}` not defined", e.var_name)
+                    });
+
+                let scope = defined.clone();
+                for_struct
+                    .children
+                    .iter_mut()
+                    .for_each(|child: &mut Box<NodeType>| {
+                        check(child, defined);
+                    });
+                *defined = scope.clone();
+            }
+        },
     }
 }
 

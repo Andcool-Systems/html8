@@ -7,7 +7,8 @@ use crate::{
 };
 use types::{
     ArgStruct, AssignEnum, AssignStruct, BlockStruct, BlockType, CallArgStruct, CallStruct,
-    DataType, DefinitionType, FunctionDefinitionStruct, NodeType, VariableDefinitionStruct,
+    DataType, DefinitionType, ForStruct, FunctionDefinitionStruct, NodeType, ServiceBlockType,
+    VariableDefinitionStruct,
 };
 
 pub mod types;
@@ -44,10 +45,11 @@ pub fn start_generating_code_tree(tree: ASTNode) -> NodeType {
     tree
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum TempNodeType {
     Definition(DataType),
     Block(BlockType),
+    ServiceBlock(BlockType),
     Call,
     Assign,
 }
@@ -59,6 +61,27 @@ fn get_data_type(str: String) -> Option<DataType> {
         s if s == "bool" => Some(DataType::Bool),
         _ => None,
     }
+}
+
+fn generate_call_args(props: Vec<ASTProp>) -> Vec<CallArgStruct> {
+    props
+        .iter()
+        .map(|prop: &ASTProp| {
+            let value: Option<ExprToken> = prop
+                .clone()
+                .value
+                .map(|val: PropType| match val {
+                    PropType::Literal(s) => Some(ExprToken::Literal(s.to_string())),
+                    PropType::Var(s) => Some(MathParser::new(s.chars()).parse_expr()),
+                })
+                .unwrap_or(None);
+
+            CallArgStruct {
+                name: prop.name.clone(),
+                value,
+            }
+        })
+        .collect()
 }
 
 fn preprocess_code_tree(tree: ASTNode) -> NodeType {
@@ -74,14 +97,64 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
         s if s == "head" => TempNodeType::Block(BlockType::Head),
         s if s == "main" => TempNodeType::Block(BlockType::Main),
         s if s == "div" => TempNodeType::Block(BlockType::Div),
-        s if s == "for" => TempNodeType::Block(BlockType::For),
+        s if s == "for" => TempNodeType::ServiceBlock(BlockType::For),
 
         // Assign/Call
         _ if tree.self_closing => TempNodeType::Call,
         _ => TempNodeType::Assign,
     };
 
-    let mut node_type: NodeType = match temp_node_type {
+    let mut node_type: NodeType = match temp_node_type.clone() {
+        TempNodeType::ServiceBlock(block_type) => match block_type {
+            BlockType::For => NodeType::ServiceBlock(ServiceBlockType::For({
+                let args = generate_call_args(tree.props);
+
+                let start = args
+                    .iter()
+                    .find(|a| a.name.eq("start"))
+                    .expect("Argument `start` in for block is required")
+                    .value
+                    .clone()
+                    .expect("Argument `start` cannot be bool");
+
+                let end = args
+                    .iter()
+                    .find(|a| a.name.eq("end"))
+                    .expect("Argument `end` in for block is required")
+                    .value
+                    .clone()
+                    .expect("Argument `end` cannot be bool");
+
+                let iter = args
+                    .iter()
+                    .find(|a| a.name.eq("i"))
+                    .expect("Argument `i` in for block is required")
+                    .value
+                    .clone()
+                    .expect("Argument `i` cannot be bool");
+
+                let iter_name = match iter {
+                    ExprToken::Literal(n) => n,
+                    _ => panic!("Argument `i` must be a literal"),
+                };
+
+                let children = vec![Box::new(NodeType::DEFINITION(DefinitionType::Variable(
+                    VariableDefinitionStruct {
+                        data_type: DataType::Int,
+                        name: iter_name.clone(),
+                        value: AssignEnum::Expr(start.clone()),
+                        is_const: false,
+                    },
+                )))];
+                ForStruct {
+                    start,
+                    end,
+                    iter_name,
+                    children,
+                }
+            })),
+            _ => unreachable!(),
+        },
         TempNodeType::Block(block_type) => NodeType::BLOCK(BlockStruct {
             tag: block_type,
             children: Vec::new(),
@@ -191,26 +264,9 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
                 },
             }
         }
-        TempNodeType::Call => NodeType::CALL({
-            let args = tree.props.iter().map(|prop: &ASTProp| {
-                let value: Option<ExprToken> = prop
-                    .clone()
-                    .value
-                    .map(|val: PropType| match val {
-                        PropType::Literal(s) => Some(ExprToken::Literal(s.to_string())),
-                        PropType::Var(s) => Some(MathParser::new(s.chars()).parse_expr()),
-                    })
-                    .unwrap_or(None);
-
-                CallArgStruct {
-                    name: prop.name.clone(),
-                    value,
-                }
-            });
-            CallStruct {
-                calling_name: tree.name,
-                args: args.collect(),
-            }
+        TempNodeType::Call => NodeType::CALL(CallStruct {
+            calling_name: tree.name,
+            args: generate_call_args(tree.props),
         }),
         TempNodeType::Assign => NodeType::ASSIGN(AssignStruct::new(tree.name)),
     };
@@ -228,21 +284,30 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
                     }
                     DefinitionType::Variable(_) => {}
                 },
-                NodeType::CALL(_) => unreachable!("HOW IT'S POSSIBLE??"),
                 NodeType::ASSIGN(ref mut assign_struct) => {
                     assign_struct.body = AssignEnum::Call(Box::new(preprocess_code_tree(*node)))
                 }
+                NodeType::ServiceBlock(ref mut service_block_type) => match service_block_type {
+                    ServiceBlockType::For(for_struct) => {
+                        for_struct
+                            .children
+                            .push(Box::new(preprocess_code_tree(*node)));
+                    }
+                },
+                _ => unreachable!(),
             },
             ASTBody::String(s) => match node_type {
-                NodeType::BLOCK(_) => panic!("String tags not supported inside blocks"),
+                NodeType::BLOCK(_) | NodeType::ServiceBlock(_) => {
+                    panic!("String tags not supported inside blocks")
+                }
                 NodeType::DEFINITION(ref mut definition_type) => match definition_type {
                     DefinitionType::Function(_) => panic!("Cannot use string tags inside function"),
                     DefinitionType::Variable(_) => {}
                 },
-                NodeType::CALL(_) => unreachable!("HOW IT'S POSSIBLE??"),
                 NodeType::ASSIGN(ref mut assign_struct) => {
                     assign_struct.body = AssignEnum::Expr(MathParser::new(s.chars()).parse_expr())
                 }
+                _ => unreachable!(),
             },
         });
 

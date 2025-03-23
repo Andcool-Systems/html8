@@ -18,6 +18,7 @@ pub enum NodeType {
     DEFINITION(DefinitionType),
     CALL(CallStruct),
     ASSIGN(AssignStruct),
+    ServiceBlock(ServiceBlockType),
 }
 
 // -------------- Block Type ---------------
@@ -129,4 +130,19 @@ impl AssignStruct {
             body: AssignEnum::None,
         }
     }
+}
+
+// ----------- Service Block Type ---------------
+
+#[derive(Debug, Clone)]
+pub enum ServiceBlockType {
+    For(ForStruct),
+}
+
+#[derive(Debug, Clone)]
+pub struct ForStruct {
+    pub start: ExprToken,
+    pub end: ExprToken,
+    pub iter_name: String,
+    pub children: Vec<Box<NodeType>>,
 }

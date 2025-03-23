@@ -87,7 +87,7 @@ impl Std {
         ))
     }
 
-    fn compile_var_println(l: &VariableType) -> String {
+    fn compile_var_println(l: &VariableType, end: String) -> String {
         let format_key = match l.data_type {
             DataType::Int => String::from("%d"),
             DataType::Bool => String::from("%d"),
@@ -95,9 +95,9 @@ impl Std {
             DataType::Void | DataType::Any => unreachable!(),
         };
         if !l.is_func {
-            format!("printf(\"{}\\n\", {});", format_key, l.name)
+            format!("printf(\"{}{}\", {});", format_key, end, l.name)
         } else {
-            format!("printf(\"<function at %d>\\n\", {});", l.name)
+            format!("printf(\"<function at %d>{}\", {});", end, l.name)
         }
     }
 
@@ -107,7 +107,7 @@ impl Std {
             .find(|a: &&CallArgStruct| a.name.eq("arg"))
             .map(|arg: &CallArgStruct| match &arg.value {
                 Some(ExprToken::Literal(l)) => format!("printf(\"{}\\n\");", l),
-                Some(ExprToken::Variable(l)) => Self::compile_var_println(l),
+                Some(ExprToken::Variable(l)) => Self::compile_var_println(l, String::from("\\n")),
                 Some(_) => format!(
                     "printf(\"%d\\n\", {});",
                     CLang::process_expr_token(arg.value.clone().unwrap())
@@ -121,7 +121,7 @@ impl Std {
         if let Some(arg) = call.args.iter().find(|a: &&CallArgStruct| a.name.eq("arg")) {
             return match &arg.value {
                 Some(ExprToken::Literal(l)) => format!("printf(\"{}\");", l),
-                Some(ExprToken::Variable(l)) => Self::compile_var_println(l),
+                Some(ExprToken::Variable(l)) => Self::compile_var_println(l, String::new()),
                 Some(_) => format!(
                     "printf(\"%d\", {});",
                     CLang::process_expr_token(arg.value.clone().unwrap())

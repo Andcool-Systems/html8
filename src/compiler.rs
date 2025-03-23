@@ -1,4 +1,9 @@
-use crate::code_tree::types::{ArgStruct, AssignEnum, AssignStruct, BlockType};
+use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
+
+use crate::code_tree::types::{
+    ArgStruct, AssignEnum, AssignStruct, BlockType, ForStruct, ServiceBlockType,
+};
 use crate::{
     code_tree::types::{
         CallStruct, DataType, DefinitionType, FunctionDefinitionStruct, NodeType,
@@ -97,7 +102,35 @@ impl CLang {
             }
             NodeType::CALL(call_struct) => self.compile_call(call_struct),
             NodeType::ASSIGN(assign_struct) => self.compile_assign(assign_struct),
+            NodeType::ServiceBlock(sbt) => match sbt {
+                ServiceBlockType::For(for_struct) => self.compile_for(for_struct),
+            },
         }
+    }
+
+    fn compile_for(&mut self, for_struct: ForStruct) -> String {
+        let mut children: Vec<String> = Vec::new();
+        for_struct
+            .children
+            .into_iter()
+            .for_each(|child: Box<NodeType>| {
+                let stmt_string = self._compile(*child);
+                (!stmt_string.is_empty()).then(|| children.push(stmt_string));
+            });
+        let random_name = Self::random_string(7);
+
+        format!(
+            "{}\nloop_{}:\nif({}>={}){{goto end_{};}}\n{}\n{}++;\ngoto loop_{};\nend_{}:",
+            children[0],
+            random_name,
+            for_struct.iter_name,
+            Self::process_expr_token(for_struct.end),
+            random_name,
+            children[1..].join("\n"),
+            for_struct.iter_name,
+            random_name,
+            random_name
+        )
     }
 
     fn compile_var(&mut self, v: VariableDefinitionStruct) -> String {
@@ -231,6 +264,14 @@ impl CLang {
                 format!("pow({}, {})", l_token, r_token)
             }
         }
+    }
+
+    fn random_string(length: usize) -> String {
+        thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(length)
+            .map(char::from)
+            .collect()
     }
 }
 
