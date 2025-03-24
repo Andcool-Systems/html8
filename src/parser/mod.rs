@@ -169,8 +169,8 @@ impl Parser {
                     }
                     PropParseState::Value => match value_type {
                         PropValueType::Literal => {
-                            parse_state = PropParseState::Name;
                             iter.next();
+                            break;
                         }
                         _ => buffer.push(iter.next().unwrap()),
                     },
@@ -199,23 +199,23 @@ impl Parser {
                     }
                     _ => {
                         iter.next();
-                        ParserError::error("Unexpected `{` ", iter)
+                        ParserError::error("Unexpected `{`", iter)
                     }
                 },
                 '}' => match parse_state {
                     PropParseState::Value => match value_type {
                         PropValueType::Var => {
-                            parse_state = PropParseState::Name;
                             iter.next();
+                            break;
                         }
                         _ => {
                             iter.next();
-                            ParserError::error("Unexpected `}` ", iter)
+                            ParserError::error("Unexpected `}`", iter)
                         }
                     },
                     _ => {
                         iter.next();
-                        ParserError::error("Unexpected `}` ", iter)
+                        ParserError::error("Unexpected `}`", iter)
                     }
                 },
                 '/' => match parse_state {
