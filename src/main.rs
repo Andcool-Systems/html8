@@ -7,11 +7,12 @@ use crate::{
 };
 use anyhow::Result;
 use code_tree::start_generating_code_tree;
-use parser::start_parse;
+use parser::Parser;
 
 mod code_tree;
 mod compiler;
 mod definitions;
+mod errors;
 mod iter;
 mod libs;
 mod math;
@@ -20,7 +21,7 @@ mod types;
 
 fn main() -> Result<()> {
     let contents: String = fs::read_to_string("./example.html8")?;
-    let tree: ASTNode = start_parse(contents);
+    let tree: ASTNode = Parser::new(contents).parse();
     let code_tree: NodeType = start_generating_code_tree(tree);
     let mut comp = CLang::new(code_tree);
     let code: String = comp.compile();

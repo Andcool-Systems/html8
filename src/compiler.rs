@@ -29,7 +29,7 @@ impl CompilerCodegen for CLang {
     fn compile(&mut self) -> String {
         let statements: String = self._compile(self.tree.clone());
         format!(
-            "#include <stdio.h>\n#include <math.h>\n\nint main(void){{\n{}return 0;\n}}",
+            "#include <stdio.h>\n#include <math.h>\nint main(void){{\n{}return 0;\n}}",
             statements
         )
     }
