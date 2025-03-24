@@ -15,6 +15,7 @@ use crate::{
         NodeType,
     },
     compiler::CLang,
+    errors::{simple::SimpleError, ErrorKind},
     math::{ExprToken, VariableType},
 };
 
@@ -150,8 +151,12 @@ impl Std {
     pub fn compile_inc(call: CallStruct) -> String {
         if let Some(arg) = call.args.iter().find(|a: &&CallArgStruct| a.name.eq("arg")) {
             return match &arg.value {
-                Some(ExprToken::Variable(l)) => format!("{}++;", l.name),
-                _ => panic!("Cannot increment non-variable type"),
+                Some(ExprToken::Variable(l)) if !l.is_func => format!("{}++;", l.name),
+                Some(ExprToken::Variable(l)) => SimpleError::error(
+                    &format!("Cannot increment non-variable type `{}`", l.name),
+                    ErrorKind::TypeCheck,
+                ),
+                _ => SimpleError::error("Cannot increment non-variable type", ErrorKind::TypeCheck),
             };
         }
         String::new()
@@ -160,8 +165,12 @@ impl Std {
     pub fn compile_dec(call: CallStruct) -> String {
         if let Some(arg) = call.args.iter().find(|a: &&CallArgStruct| a.name.eq("arg")) {
             return match &arg.value {
-                Some(ExprToken::Variable(l)) => format!("{}--;", l.name),
-                _ => panic!("Cannot increment non-variable type"),
+                Some(ExprToken::Variable(l)) if !l.is_func => format!("{}--;", l.name),
+                Some(ExprToken::Variable(l)) => SimpleError::error(
+                    &format!("Cannot decrement non-variable type `{}`", l.name),
+                    ErrorKind::TypeCheck,
+                ),
+                _ => SimpleError::error("Cannot decrement non-variable type", ErrorKind::TypeCheck),
             };
         }
         String::new()

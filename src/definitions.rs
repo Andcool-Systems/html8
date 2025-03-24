@@ -1,6 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::code_tree::types::{ArgStruct, AssignEnum, CallArgStruct, ServiceBlockType};
+use crate::errors::simple::SimpleError;
+use crate::errors::ErrorKind;
 use crate::math::errors::DefinitionNotFound;
 use crate::math::VariableType;
 use crate::{
@@ -33,9 +35,12 @@ fn find_duplicate<T: Eq + std::hash::Hash + Clone>(arr: &[T]) -> Option<T> {
 
 fn check_duplicate_def(args: Vec<String>, calling_name: String) {
     if let Some(duplicate) = find_duplicate(&args) {
-        panic!(
-            "Found duplicate argument `{}` in function: {}",
-            duplicate, calling_name
+        SimpleError::error(
+            &format!(
+                "Found duplicate argument `{}` in function: {}",
+                duplicate, calling_name
+            ),
+            ErrorKind::DefinitionCheck,
         );
     }
 }
@@ -84,7 +89,10 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
                 *defined = scope.clone();
 
                 defined.get(&fds.name).is_some().then(|| {
-                    panic!("Cannot redefine function `{}`", fds.name);
+                    SimpleError::error(
+                        &format!("Cannot redefine function `{}`", fds.name),
+                        ErrorKind::DefinitionCheck,
+                    );
                 });
 
                 defined.insert(fds.name.clone(), Defined::Function(fds.clone()));
@@ -95,25 +103,36 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
                         expr_token
                             .check_def(defined)
                             .unwrap_or_else(|e: DefinitionNotFound| {
-                                panic!("Variable `{}` not defined", e.var_name)
+                                SimpleError::error(
+                                    &format!("Variable `{}` not defined", e.var_name),
+                                    ErrorKind::DefinitionCheck,
+                                )
                             });
                     }
                     AssignEnum::Call(node_type) => match *node_type.clone() {
                         NodeType::CALL(mut call_struct) => {
                             check_fn_call(defined, &mut call_struct);
 
-                            defined.get(&call_struct.calling_name).expect(&format!(
-                                "Function `{}` not defined",
-                                call_struct.calling_name
-                            ));
+                            defined.get(&call_struct.calling_name).unwrap_or_else(|| {
+                                SimpleError::error(
+                                    &format!("Function `{}` not defined", call_struct.calling_name),
+                                    ErrorKind::DefinitionCheck,
+                                )
+                            });
                         }
-                        _ => panic!("Unexpected token inside {} definition", vds.name),
+                        _ => SimpleError::error(
+                            &format!("Unexpected token inside {} definition", vds.name),
+                            ErrorKind::DefinitionCheck,
+                        ),
                     },
                     AssignEnum::None => unreachable!(),
                 }
 
                 defined.get(&vds.name).is_some().then(|| {
-                    panic!("Cannot redefine variable `{}`", vds.name);
+                    SimpleError::error(
+                        &format!("Cannot redefine variable `{}`", vds.name),
+                        ErrorKind::DefinitionCheck,
+                    );
                 });
 
                 defined.insert(vds.name.clone(), Defined::Variable(vds.clone()));
@@ -122,12 +141,16 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
         NodeType::CALL(call_struct) => check_fn_call(defined, call_struct),
         NodeType::ASSIGN(ref mut call_arg_struct) => {
             match defined.get(&call_arg_struct.name) {
-                Some(Defined::Function(_)) => {
-                    panic!("Cannot assign value to `{}` function", call_arg_struct.name)
-                }
-                None => panic!(
-                    "Variable `{}` for assign not defined!",
-                    call_arg_struct.name
+                Some(Defined::Function(_)) => SimpleError::error(
+                    &format!("Cannot assign value to `{}` function", call_arg_struct.name),
+                    ErrorKind::DefinitionCheck,
+                ),
+                None => SimpleError::error(
+                    &format!(
+                        "Variable `{}` for assign not defined!",
+                        call_arg_struct.name
+                    ),
+                    ErrorKind::DefinitionCheck,
                 ),
                 _ => {}
             };
@@ -137,12 +160,18 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
                     expr_token
                         .check_def(defined)
                         .unwrap_or_else(|e: DefinitionNotFound| {
-                            panic!("Variable `{}` not defined", e.var_name)
+                            SimpleError::error(
+                                &format!("Variable `{}` not defined", e.var_name),
+                                ErrorKind::DefinitionCheck,
+                            )
                         })
                 }
                 AssignEnum::Call(mut body) => match *body.clone() {
                     NodeType::CALL(_) => check(&mut body, defined),
-                    _ => panic!("Unexpected token inside {} assign", call_arg_struct.name),
+                    _ => SimpleError::error(
+                        &format!("Unexpected token inside {} assign", call_arg_struct.name),
+                        ErrorKind::DefinitionCheck,
+                    ),
                 },
                 AssignEnum::None => unreachable!(),
             }
@@ -153,14 +182,20 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
                     .start
                     .check_def(&defined)
                     .unwrap_or_else(|e: DefinitionNotFound| {
-                        panic!("Variable `{}` not defined", e.var_name)
+                        SimpleError::error(
+                            &format!("Variable `{}` not defined", e.var_name),
+                            ErrorKind::DefinitionCheck,
+                        )
                     });
 
                 for_struct
                     .end
                     .check_def(&defined)
                     .unwrap_or_else(|e: DefinitionNotFound| {
-                        panic!("Variable `{}` not defined", e.var_name)
+                        SimpleError::error(
+                            &format!("Variable `{}` not defined", e.var_name),
+                            ErrorKind::DefinitionCheck,
+                        )
                     });
 
                 let scope = defined.clone();
@@ -183,14 +218,20 @@ fn check_fn_call(
     let entry = defined.get(&call_struct.calling_name);
 
     entry.is_none().then(|| {
-        panic!(
-            "Cannot call undefined function: {}",
-            call_struct.calling_name
+        SimpleError::error(
+            &format!(
+                "Cannot call undefined function: {}",
+                call_struct.calling_name
+            ),
+            ErrorKind::DefinitionCheck,
         );
     });
 
     if let Some(Defined::Variable(vds)) = entry {
-        panic!("Cannot call variable as function: {}", vds.name);
+        SimpleError::error(
+            &format!("Cannot call variable as function: {}", vds.name),
+            ErrorKind::DefinitionCheck,
+        );
     }
 
     if let Some(Defined::Function(f)) = entry {
@@ -200,9 +241,12 @@ fn check_fn_call(
                 .iter()
                 .any(|a: &CallArgStruct| a.name == arg.name))
             .then(|| {
-                panic!(
-                    "Argument `{}` in function `{}` call is required",
-                    arg.name, f.name
+                SimpleError::error(
+                    &format!(
+                        "Argument `{}` in function `{}` call is required",
+                        arg.name, f.name
+                    ),
+                    ErrorKind::DefinitionCheck,
                 );
             });
         });
@@ -218,15 +262,21 @@ fn check_fn_call(
         if let Some(argv) = &arg.value {
             argv.check_def(defined)
                 .unwrap_or_else(|e: DefinitionNotFound| {
-                    panic!("Variable `{}` not defined", e.var_name)
+                    SimpleError::error(
+                        &format!("Variable `{}` not defined", e.var_name),
+                        ErrorKind::DefinitionCheck,
+                    )
                 });
         }
 
         if let Some(Defined::Function(f)) = entry {
             (!f.args.iter().any(|a: &ArgStruct| a.name == arg.name)).then(|| {
-                panic!(
-                    "Unexpected argument `{}` for function `{}`",
-                    arg.name, f.name
+                SimpleError::error(
+                    &format!(
+                        "Unexpected argument `{}` for function `{}`",
+                        arg.name, f.name
+                    ),
+                    ErrorKind::DefinitionCheck,
                 );
             });
         }

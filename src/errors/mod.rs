@@ -5,4 +5,5 @@ pub enum ErrorKind {
     Parsing,
     DefinitionCheck,
     TypeCheck,
+    MathProcessing,
 }

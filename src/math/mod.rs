@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
 use crate::code_tree::types::AssignEnum;
+use crate::errors::simple::SimpleError;
+use crate::errors::ErrorKind;
 use crate::math::errors::DefinitionNotFound;
 use crate::{code_tree::types::DataType, definitions::Defined, iter::Iter};
 
@@ -57,8 +59,11 @@ impl MathParser {
             }
             Some(ch) if ch.is_numeric() => self.process_number(),
             Some(ch) if ch.is_alphabetic() => self.process_var(),
-            Some(ch) => panic!("Unexpected char: {}", ch),
-            None => panic!("Unexpected EOI"),
+            Some(ch) => SimpleError::error(
+                &format!("Unexpected char: {}", ch),
+                ErrorKind::MathProcessing,
+            ),
+            None => SimpleError::error("Unexpected EOI", ErrorKind::MathProcessing),
         }
     }
 
@@ -142,7 +147,12 @@ impl MathParser {
                 .and_then(|ch: char| ch.is_numeric().then(|| self.iter.next().unwrap()))
         }));
 
-        ExprToken::Number(buf.parse().expect("Invalid number"))
+        ExprToken::Number(buf.parse().unwrap_or_else(|_| {
+            SimpleError::error(
+                &format!("Invalid number {}", buf),
+                ErrorKind::MathProcessing,
+            )
+        }))
     }
 
     fn process_var(&mut self) -> ExprToken {
@@ -173,7 +183,10 @@ impl MathParser {
             }
         }
 
-        panic!("Unclosed `\"` for literal `{}...`", buf);
+        SimpleError::error(
+            &format!("Unclosed `\"` for literal `{}...`", buf),
+            ErrorKind::MathProcessing,
+        );
     }
 }
 
@@ -199,9 +212,12 @@ impl ExprToken {
                 if lhs_type == rhs_type {
                     lhs_type
                 } else {
-                    panic!(
-                        "Type mismatch for math operation: {:?} and {:?}",
-                        lhs_type, rhs_type
+                    SimpleError::error(
+                        &format!(
+                            "Type mismatch for math operation: {:?} and {:?}",
+                            lhs_type, rhs_type
+                        ),
+                        ErrorKind::MathProcessing,
                     );
                 }
             }
@@ -209,10 +225,12 @@ impl ExprToken {
     }
 
     fn get_var_type(var: String, scope: &HashMap<String, Defined>) -> DataType {
-        match scope
-            .get(&var)
-            .unwrap_or_else(|| panic!("Variable `{}` not defined", var))
-        {
+        match scope.get(&var).unwrap_or_else(|| {
+            SimpleError::error(
+                &format!("Variable `{}` not defined", var),
+                ErrorKind::MathProcessing,
+            )
+        }) {
             Defined::Variable(vds) => vds.data_type.clone(),
             Defined::Function(fds) => fds.data_type.clone(),
         }

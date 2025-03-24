@@ -1,5 +1,6 @@
 use crate::{
     definitions::start_def_check,
+    errors::{simple::SimpleError, ErrorKind},
     libs::std::Std,
     math::{ExprToken, MathParser},
     parser::types::{ASTBody, ASTNode, PropType},
@@ -33,11 +34,11 @@ pub fn start_generating_code_tree(tree: ASTNode) -> NodeType {
                     }
                     NodeType::BLOCK(ref mut block_struct)
                         if block_struct.tag == BlockType::Head => {} // Will be used later
-                    _ => panic!("Unexpected tag inside `html`!"),
+                    _ => SimpleError::error("Unexpected tag inside `html`!", ErrorKind::Parsing),
                 }
             }
         }
-        _ => panic!("Unexpected root tag!"),
+        _ => SimpleError::error("Unexpected root tag!", ErrorKind::Parsing),
     }
 
     start_def_check(&mut tree);
@@ -112,30 +113,51 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
                 let start = args
                     .iter()
                     .find(|a| a.name.eq("start"))
-                    .expect("Argument `start` in for block is required")
+                    .unwrap_or_else(|| {
+                        SimpleError::error(
+                            "Argument `start` in for block is required",
+                            ErrorKind::Parsing,
+                        )
+                    })
                     .value
                     .clone()
-                    .expect("Argument `start` cannot be bool");
+                    .unwrap_or_else(|| {
+                        SimpleError::error("Argument `start` cannot be bool", ErrorKind::Parsing)
+                    });
 
                 let end = args
                     .iter()
                     .find(|a| a.name.eq("end"))
-                    .expect("Argument `end` in for block is required")
+                    .unwrap_or_else(|| {
+                        SimpleError::error(
+                            "Argument `end` in for block is required",
+                            ErrorKind::Parsing,
+                        )
+                    })
                     .value
                     .clone()
-                    .expect("Argument `end` cannot be bool");
+                    .unwrap_or_else(|| {
+                        SimpleError::error("Argument `end` cannot be bool", ErrorKind::Parsing)
+                    });
 
                 let iter = args
                     .iter()
                     .find(|a| a.name.eq("i"))
-                    .expect("Argument `i` in for block is required")
+                    .unwrap_or_else(|| {
+                        SimpleError::error(
+                            "Argument `i` in for block is required",
+                            ErrorKind::Parsing,
+                        )
+                    })
                     .value
                     .clone()
-                    .expect("Argument `i` cannot be bool");
+                    .unwrap_or_else(|| {
+                        SimpleError::error("Argument `i` cannot be bool", ErrorKind::Parsing)
+                    });
 
                 let iter_name = match iter {
                     ExprToken::Literal(n) => n,
-                    _ => panic!("Argument `i` must be a literal"),
+                    _ => SimpleError::error("Argument `i` must be a literal", ErrorKind::Parsing),
                 };
 
                 let children = vec![Box::new(NodeType::DEFINITION(DefinitionType::Variable(
@@ -165,12 +187,20 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
                     if let Some(PropType::Literal(new_name)) = &prop.value {
                         is_valid_identifier(new_name)
                             .then(|| new_name.to_string())
-                            .unwrap_or_else(|| panic!("`{}` is not valid name!", new_name))
+                            .unwrap_or_else(|| {
+                                SimpleError::error(
+                                    &format!("`{}` is not valid name!", new_name),
+                                    ErrorKind::Parsing,
+                                )
+                            })
                     } else {
-                        panic!("Cannot use dynamic value for defining a variable name!")
+                        SimpleError::error(
+                            "Cannot use dynamic value for defining a variable name!",
+                            ErrorKind::Parsing,
+                        )
                     }
                 } else {
-                    panic!("You should define name for variable!")
+                    SimpleError::error("You should define name for variable!", ErrorKind::Parsing)
                 };
 
             let is_func: bool = (tree.children.len() > 1
@@ -188,7 +218,10 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
                         .filter(|prop: &&ASTProp| prop.name != "name")
                         .map(|prop: &ASTProp| {
                             let data_type: PropType = prop.value.clone().unwrap_or_else(|| {
-                                panic!("Function argument cannot be a flag: {}", prop.name)
+                                SimpleError::error(
+                                    &format!("Function argument cannot be a flag: {}", prop.name),
+                                    ErrorKind::Parsing,
+                                )
                             });
 
                             matches!(data_type, PropType::Literal(_))
@@ -197,9 +230,12 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
                                         ArgStruct {
                                             name: prop.name.clone(),
                                             data_type: get_data_type(v).unwrap_or_else(|| {
-                                                panic!(
+                                                SimpleError::error(
+                                                    &format!(
                                                     "Unknown data type for function argument: {:?}",
                                                     prop.value
+                                                ),
+                                                    ErrorKind::Parsing,
                                                 )
                                             }),
                                         }
@@ -208,9 +244,12 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
                                     }
                                 })
                                 .unwrap_or_else(|| {
-                                    panic!(
-                                        "Function argument type cannot be a variable: {:?}",
-                                        prop.value
+                                    SimpleError::error(
+                                        &format!(
+                                            "Function argument type cannot be a variable: {:?}",
+                                            prop.value
+                                        ),
+                                        ErrorKind::Parsing,
                                     )
                                 })
                         });
@@ -247,9 +286,12 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
                             == 0)
                             .then_some(())
                             .unwrap_or_else(|| {
-                                panic!(
-                                    "Variable `{}` definition cannot take arguments",
-                                    definition_name
+                                SimpleError::error(
+                                    &format!(
+                                        "Variable `{}` definition cannot take arguments",
+                                        definition_name
+                                    ),
+                                    ErrorKind::Parsing,
                                 )
                             });
 
@@ -260,7 +302,10 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
                             is_const,
                         }))
                     }
-                    _ => panic!("All children should be nodes, not values!"),
+                    _ => SimpleError::error(
+                        "All children should be nodes, not values!",
+                        ErrorKind::Parsing,
+                    ),
                 },
             }
         }
@@ -297,11 +342,15 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
                 _ => unreachable!(),
             },
             ASTBody::String(s) => match node_type {
-                NodeType::BLOCK(_) | NodeType::ServiceBlock(_) => {
-                    panic!("String tags not supported inside blocks")
-                }
+                NodeType::BLOCK(_) | NodeType::ServiceBlock(_) => SimpleError::error(
+                    "String tags not supported inside blocks",
+                    ErrorKind::Parsing,
+                ),
                 NodeType::DEFINITION(ref mut definition_type) => match definition_type {
-                    DefinitionType::Function(_) => panic!("Cannot use string tags inside function"),
+                    DefinitionType::Function(_) => SimpleError::error(
+                        "Cannot use string tags inside function",
+                        ErrorKind::Parsing,
+                    ),
                     DefinitionType::Variable(_) => {}
                 },
                 NodeType::ASSIGN(ref mut assign_struct) => {

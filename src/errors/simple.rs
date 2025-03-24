@@ -10,12 +10,13 @@ impl SimpleError {
             ErrorKind::Parsing => String::from("Parsing error"),
             ErrorKind::DefinitionCheck => String::from("Definition check error"),
             ErrorKind::TypeCheck => String::from("Type check error"),
+            ErrorKind::MathProcessing => String::from("Math processing error"),
         }
     }
 
     pub fn error(mess: &str, error_kind: ErrorKind) -> ! {
         eprintln!(
-            "{}: {}",
+            "\n{}: {}",
             Self::get_error_kind(error_kind).red().bold(),
             mess
         );
