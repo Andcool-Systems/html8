@@ -204,7 +204,12 @@ fn preprocess_code_tree(tree: ASTNode) -> NodeType {
                 };
 
             let is_func: bool = (tree.children.len() > 1
-                || matches!(tree.children.first(), Some(ASTBody::Tag(tag)) if tag.name.eq("return") && tag.self_closing))
+                || !tree
+                    .props
+                    .iter()
+                    .filter(|p| p.name.ne("name"))
+                    .collect::<Vec<&ASTProp>>()
+                    .is_empty())
                 && tree
                     .children
                     .iter()
