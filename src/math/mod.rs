@@ -309,6 +309,10 @@ impl ExprToken {
                 let a = a.optimize_rec(scope);
                 let b = b.optimize_rec(scope);
                 if let (ExprToken::Number(left), ExprToken::Number(right)) = (&a, &b) {
+                    if right.eq(&0) {
+                        SimpleError::error("Attempt to divide by zero", ErrorKind::MathProcessing)
+                    }
+
                     return ExprToken::Number(left / right);
                 }
                 ExprToken::Div(Box::new(a), Box::new(b))
