@@ -1,105 +1,190 @@
 # HTML8
-HTML8 — это высокоуровневый компилируемый язык программирования, имеющий синтаксис, подобный HTML.
 
-## Описание синтаксиса языка
+**HTML8** is a high-level compiled programming language with syntax inspired by HTML. It combines a declarative style with the capabilities of imperative programming.
 
-Программа имеет общую структуру вида:
+---
+
+## 📄 Program Structure
+
+Every HTML8 program has the following basic structure:
+
 ```xml
 <!DOCTYPE html8>
 <html>
-<head>
-    <head-code>
-</head>
-<main>
-    <main-program-code>
-</main>
+    <head>
+        <head-code />
+    </head>
+    <main>
+        <main-program-code />
+    </main>
 </html>
 ```
 
-Блок `html` должен обязательно содержать блок `main`, который является точкой входа. Также дополнительно может быть объявлен блок `head`, в котором подключаются отдельные модули, объявляются константы и так далее.
+- The `<main>` block is **required** and serves as the **entry point** of the program.
+- The `<head>` block is optional and is used for importing modules, declaring constants, and preparatory code.
 
-## Области видимости
-Все переменные и функции, которые были созданы в корне блока `main` будут доступны всем дочерним блокам. Переменные, объявленные внутри дочерних блоков не будут доступны из родительских, но также будут доступны для дочерних. Для определения пустого блока можно использовать конструкцию `<div></div>`. После завершения блока, все объекты, которые были созданы внутри уничтожаются и более не будут доступны по имени.
+---
 
-## Резервирование имен
-Язык резервирует за собой несколько ключевых слов. Эти слова не могут быть использованы в именах переменных или функций. Такие слова как `html, head, main, div` и далее будут расцениваться компилятором **исключительно как ключевые слова**. Все попытки создать переменную или функцию с таким именем будут приводить к ошибке компиляции.
+## 📦 Scopes
 
-## Переменные
-Так как язык статически типизируемый, тип переменной должен быть известен на моменте компиляции. Синтаксис объявления переменной:
+HTML8 uses block scoping:
+
+- Variables and functions declared in `<main>` are visible to all its nested blocks.
+- Objects created in nested blocks are **not visible** to their parent blocks.
+- Once a block ends, all objects created within it are destroyed.
+- For empty blocks, `<div></div>` can be used.
+
+---
+
+## 🧠 Variables
+
+HTML8 is a **statically typed** language, so variable types must be known at compile time.
+
+### 🔹 Declaration
+
 ```xml
 <int name="my_var">12</int>
 ```
 
-В этом примере создается переменная my_var со значением 12. Использование других переменных как значение для инициализации так же разрешается. Разрешается также создавать переменные, в качестве имени которых указана другая **константная** переменная. В этом случае имя переменной указывается в фигурных скобках: 
-```xml
-<int name="my_constant_var" const>"my_cool_var"</int>
-<int name={my_constant_var}>12</int>
-```
+Creates a variable `my_var` of type `int` with value `12`. Initialization with another variable is also allowed.
 
-Использование неконстантных переменных в качестве имени запрещается, в ином случае будет вызвана ошибка компиляции.
+### 🔹 Reassignment
 
-### Изменение переменных
-После создания *неконстантной* переменной её значение можно изменить на другое с таким же типом. При этом синтаксис имеет вид:
 ```xml
 <my_var>16</my_var>
 ```
 
-В этом случае в качестве имени тега используется название переменной, с которым она была создана. (Важно отметить, что приоритет в парсинге отдается зарезервированным ключевым словам, а потом только именам объектов).
+Updates the value of the variable. The variable's name is used as the tag name.
 
-### Математические операции внутри блоков
-Внутри блоков разрешены математические операции, например:
+### 🔹 Arithmetic Expressions
+
 ```xml
-<my_var>2 * 2</my_var>
+<my_var>2 * 2 + 4</my_var>
 ```
 
-В результате в переменную попадет результат выполнения математической операции. (Предполагается, что на моменте компиляции константные значения будут упрощены и оптимизированы)
+Arithmetic expressions are allowed. The compiler may perform constant folding.
 
-## Функции
-Объявление функций почти не отличается от объявления переменной:
+---
+
+## 🛠️ Functions
+
+Functions are declared similarly to variables, with the ability to specify arguments and return values.
+
 ```xml
 <int name="my_func" arg1="int">
-    <function-body>
-    <return {my_var} />
+    <function-body />
+    <return {result} />
 </int>
 ```
 
-Используемое при создании функции ключевое слова показывает, какой тип возвращает функция. Ключевое слово `return` принимает один аргумент `val`, который будет возвращен из функции. Если возвращаемым типом является `void`, то функцию `return` можно не вызывать.
-Аргумент `arg1` имеет тип `int` и может быть использован по своему имени внутри блока функции.    
+- The function's return type (`int` in this example) is declared like a variable.
+- Arguments are specified as attributes (`arg1="int"`).
+- Return values are provided via `<return {value} />`.
+- For `void` functions, `return` can be omitted.
 
-Как вы уже заметили, создание переменной и функции мало чем отличаются. Это связано с тем, что язык реализует переменные через функции с предвычисленным значением. Изначально все функции являются переменными до тех пор, пока в их теле не появится хоть одно служебное слово. Например:
+### 🔹 Variables as Functions
+
+Until a reserved keyword (like `return` or another function call) is used inside the block, the object is treated as a **computed variable**:
 
 ```xml
-<!-- Это переменная -->
-<int name="hello">
-    1 + 2
-</int>
+<!-- Variable -->
+<int name="sum">1 + 2</int>
 
-<!-- А это уже функция, так как в ее теле появился вызов функции println -->
-<int name="hello">
-    <println {my_var} />
-    <return {my_var} />
+<!-- Function -->
+<int name="show" arg="int">
+    <println {arg} />
+    <return {arg} />
 </int>
 ```
 
-### Вызов функций
-Вызов функции производится через одиночный тег `<func_name arg1={my_var} />` при этом порядок передачи аргументов не важен. Результат выполнения функции будет передан в блок выше. Результат может быть принят, а может быть подавлен. Пример:
-```jsx
+---
+
+## 🔁 Function Calls
+
+Functions are called using self-closing tags with argument passing:
+
+```xml
+<func_name arg1={value1} arg2={value2} />
+```
+
+- Argument order doesn't matter.
+- Function results can be stored in a variable:
+
+```xml
+<int name="result">
+    <my_func arg={input} />
+</int>
+```
+
+---
+
+## 🔂 `for` Loops
+
+HTML8 supports `for` loops with the following syntax:
+
+```xml
+<for i="i" start={0} end={10}>
+    <body />
+</for>
+```
+
+- The `i` attribute specifies the iterator's name.
+- The iterator is automatically created within the loop's scope as an `int` with the name from the `i` attribute.
+- The `start` and `end` attributes define the loop range (inclusive `start`, exclusive `end`).
+
+Example:
+
+```xml
+<for i="x" start={0} end={5}>
+    <println {x} />
+</for>
+```
+
+---
+
+## ✅ Example Program
+
+```xml
+<!DOCTYPE html8>
 <html>
-    <head>
-    </head>
+    <head></head>
     <main>
         <int name="a">1</int>
         <int name="b">2</int>
 
-        <int name="my_func" arg="int">
+        <int name="sum" arg="int">
             <return {arg + b} />
         </int>
 
         <int name="result">
-            <my_func arg={a} />
+            <sum arg={a} />
         </int>
 
         <println {result} />
     </main>
 </html>
 ```
+
+---
+
+## 💡 Features
+
+- HTML8 preserves the readability and structure of HTML while offering the power of a typed language.
+- The HTML8 compiler optimizes code during compilation, including constant folding.
+- Encourages pure functions and localized scope.
+- **Compiles to the C programming language**, enabling high-performance executables and access to C’s mature ecosystem.
+
+---
+
+## 📌 In Development
+
+Planned features:
+
+- Conditional operators (`if`, `else`)
+- `while` loops
+- Boolean operations
+
+---
+
+**Created by AndcoolSystems under PEPSI Community, March 14, 2025**
+
