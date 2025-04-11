@@ -9,7 +9,6 @@
 Every HTML8 program has the following basic structure:
 
 ```xml
-<!DOCTYPE html8>
 <html>
     <head>
         <head-code />
@@ -145,7 +144,6 @@ Example:
 ## ✅ Example Program
 
 ```xml
-<!DOCTYPE html8>
 <html>
     <head></head>
     <main>
