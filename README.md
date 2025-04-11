@@ -48,7 +48,7 @@ HTML8 is a **statically typed** language, so variable types must be known at com
 
 Creates a variable `my_var` of type `int` with value `12`. Initialization with another variable is also allowed.
 
-### 🔹 Reassignment
+### 🔹 Assignment
 
 ```xml
 <my_var>16</my_var>
