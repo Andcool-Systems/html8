@@ -121,7 +121,7 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
                             });
                         }
                         _ => SimpleError::error(
-                            &format!("Unexpected token inside {} definition", vds.name),
+                            &format!("Unexpected token inside `{}` definition", vds.name),
                             ErrorKind::DefinitionCheck,
                         ),
                     },
@@ -145,6 +145,17 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
                     &format!("Cannot assign value to `{}` function", call_arg_struct.name),
                     ErrorKind::DefinitionCheck,
                 ),
+                Some(Defined::Variable(v)) => {
+                    if v.is_const {
+                        SimpleError::error(
+                            &format!(
+                                "Cannot assign value to constant `{}` variable",
+                                call_arg_struct.name
+                            ),
+                            ErrorKind::DefinitionCheck,
+                        )
+                    }
+                }
                 None => SimpleError::error(
                     &format!(
                         "Variable `{}` for assign not defined!",
@@ -152,7 +163,6 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
                     ),
                     ErrorKind::DefinitionCheck,
                 ),
-                _ => {}
             };
 
             match call_arg_struct.body.clone() {
@@ -169,7 +179,7 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
                 AssignEnum::Call(mut body) => match *body.clone() {
                     NodeType::CALL(_) => check(&mut body, defined),
                     _ => SimpleError::error(
-                        &format!("Unexpected token inside {} assign", call_arg_struct.name),
+                        &format!("Unexpected token inside `{}` assign", call_arg_struct.name),
                         ErrorKind::DefinitionCheck,
                     ),
                 },

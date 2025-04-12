@@ -147,8 +147,11 @@ impl CLang {
             AssignEnum::None => unreachable!(),
         };
 
+        let is_const = if v.is_const { "const " } else { "" };
+
         format!(
-            "{} {}{} = {};",
+            "{}{} {}{} = {};",
+            is_const,
             Self::convert_types(v.data_type),
             arr,
             v.name,

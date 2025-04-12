@@ -228,10 +228,7 @@ impl Parser {
                 },
                 '>' => match parse_state {
                     PropParseState::Name => break,
-                    _ => {
-                        iter.next();
-                        ParserError::error("Unexpected `>`", iter)
-                    }
+                    _ => buffer.push(iter.next().unwrap()),
                 },
                 char if !char.is_whitespace() => {
                     if let Some(next) = iter.next() {
