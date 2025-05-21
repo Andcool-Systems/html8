@@ -71,7 +71,7 @@ impl Std {
             FunctionDefinitionStruct::new_internal(
                 "inc".to_string(),
                 DataType::Void,
-                vec![ArgStruct::new("arg".to_string(), DataType::Any)],
+                vec![ArgStruct::new("arg".to_string(), DataType::Int)],
                 false,
             ),
         ))
@@ -82,7 +82,7 @@ impl Std {
             FunctionDefinitionStruct::new_internal(
                 "dec".to_string(),
                 DataType::Void,
-                vec![ArgStruct::new("arg".to_string(), DataType::Any)],
+                vec![ArgStruct::new("arg".to_string(), DataType::Int)],
                 false,
             ),
         ))

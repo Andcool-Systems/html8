@@ -139,6 +139,7 @@ impl Parser {
         }
     }
 
+    // TODO: Fix `{"a}"}` argument parsing
     fn process_prop(&self, iter: &mut Iter<char>) -> ASTProp {
         iter.step_back();
         let mut parse_state = PropParseState::Name;

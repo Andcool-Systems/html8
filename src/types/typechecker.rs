@@ -101,41 +101,34 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
                         expr_token.get_type(&scope)
                     }
                     AssignEnum::Call(node_type) => match *node_type.clone() {
-                        NodeType::CALL(call_struct) => match scope.get(&call_struct.calling_name) {
-                            Some(Defined::Function(f)) => f.data_type.clone(),
-                            _ => unreachable!(),
-                        },
+                        NodeType::CALL(mut call_struct) => {
+                            match scope.get(&call_struct.calling_name) {
+                                Some(Defined::Function(fds)) => {
+                                    check_call_args(&scope, &mut call_struct, fds);
+                                    fds.data_type.clone()
+                                }
+                                _ => unreachable!(),
+                            }
+                        }
                         _ => unreachable!(),
                     },
                     AssignEnum::None => unreachable!(),
                 };
-                (vds.data_type != value_type).then(|| {
-                        SimpleError::error(&format!(
+                if vds.data_type != value_type {
+                    SimpleError::error(
+                        &format!(
                             "Value type for variable `{}` is incorrect! Expected `{:?}`, got `{:?}`",
                             vds.name, vds.data_type, value_type
-                        ), ErrorKind::TypeCheck);
-                    });
+                        ),
+                        ErrorKind::TypeCheck
+                    );
+                }
                 scope.insert(vds.name.clone(), Defined::Variable(vds.clone()));
             }
         },
         NodeType::CALL(ref mut call_struct) => {
             if let Some(Defined::Function(fds)) = scope.get(&call_struct.calling_name) {
-                call_struct.args.iter_mut().for_each(|arg| {
-                        if let Some(ags) = fds.args.iter().find(|a| a.name == arg.name) {
-                            if let Some(argv) = arg.value.as_mut() {
-                                let argv_type: DataType = argv.get_type(&scope);
-                                argv.optimize(&scope);
-                                (ags.data_type != DataType::Any).then(|| {
-                                    if ags.data_type != argv_type {
-                                        SimpleError::error(&format!(
-                                            "Argument `{}` has wrong type! Expected: `{:?}`, got `{:?}`",
-                                            ags.name, ags.data_type, argv_type
-                                        ), ErrorKind::TypeCheck);
-                                    }
-                                });
-                            }
-                        }
-                    });
+                check_call_args(&scope, call_struct, fds);
             }
         }
         NodeType::ASSIGN(ref mut assign_struct) => match &mut assign_struct.body {
@@ -154,7 +147,7 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
                 }
             }
             AssignEnum::Call(node_type) => match *node_type.clone() {
-                NodeType::CALL(call_struct) => {
+                NodeType::CALL(mut call_struct) => {
                     let call_type = scope.get(&call_struct.calling_name);
                     let assign_type = scope.get(&assign_struct.name);
 
@@ -170,6 +163,8 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
                                 ErrorKind::TypeCheck,
                             );
                         }
+
+                        check_call_args(&scope, &mut call_struct, fun);
                     }
                 }
                 _ => unreachable!(),
@@ -207,4 +202,28 @@ fn check(tree: &mut NodeType, defined: &mut HashMap<String, Defined>) {
     }
 
     *defined = scope;
+}
+
+fn check_call_args(
+    scope: &HashMap<String, Defined>,
+    call_struct: &mut crate::code_tree::types::CallStruct,
+    fds: &crate::code_tree::types::FunctionDefinitionStruct,
+) {
+    call_struct.args.iter_mut().for_each(|arg| {
+        if let Some(ags) = fds.args.iter().find(|a| a.name == arg.name) {
+            if let Some(argv) = arg.value.as_mut() {
+                let argv_type: DataType = argv.get_type(scope);
+                argv.optimize(scope);
+                if ags.data_type != DataType::Any && ags.data_type != argv_type {
+                    SimpleError::error(
+                        &format!(
+                            "Argument `{}` has wrong type! Expected: `{:?}`, got `{:?}`",
+                            ags.name, ags.data_type, argv_type
+                        ),
+                        ErrorKind::TypeCheck,
+                    );
+                }
+            }
+        }
+    });
 }
